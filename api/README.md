@@ -1,6 +1,28 @@
-# memo-api: Make Memories
+# vault-api: Password Manager
 
-`memo-api` is a simple file storage service and is the backend service for `memo-website`.
+`vault-api` is a simple password manager service and is the backend service for `vault-website`.
+
+This service is part of the low-cost hosting solutions initiative to help people reduce tech cost.
+
+Objectives:
+- Store passwords and secrets
+- Encrypt data at the client side
+- Do not store the decryption key
+- Derive the decryption key from a vault password not stored in the system
+
+Workflow:
+- Assigne a name or label for the data entry
+- User encrypts passwords or secrets
+- Send the encrypted data to the API for processing
+- Store the encrypted data in the database
+- User search for the password entry
+- Service returns the matching entries (id and label, etc)
+- User selects an entry
+- Service returns the full data (still encrypted)
+- User unseals the data by entering the vault password
+- User may not have to enter the vault password all the time
+- Encrypted data decrypted in the client
+- User should be able to copy the password or secret to clipboard
 
 It is designed for personal use and not indended for large number of concurrent users.
 The goal of the service is to provide an economical way to store and retrieve
@@ -46,48 +68,10 @@ Create a Google Cloud Service Account with the following roles:
 - Storage Insights Collector Service
 - Storage Object Admin
 
-## Clients
-
-Clients are the tenants or customers of the service.
-
-Each client has access to the following resources:
-- users
-- buckets
-- dirs
-- files
-
-All clients are managed via the CLI only.
-
-```bash
-./memo-api clients list
-./memo-api clients create name
-./memo-api clients disable client_id
-./memo-api clients enable client_id
-./memo-api clients delete client_id
-```
-
-Client:
-- id
-- name
-- status: active, inactive
-- created_at
-
 ## Users
-
-Each clients can have users with roles the define the permissions to access client resources.
-Users are managed via CLI only as well.
-
-```bash
-./memo-api users list client_id
-./memo-api users create client_id username
-./memo-api users enable id
-./memo-api users disable id
-./memo-api users delete id
-```
 
 User:
 - id
-- client_id
 - username
 - password
 - status: active, inactive
@@ -95,146 +79,84 @@ User:
 - created_at
 - updated_at
 
-Usename is unique globally although it is namespaced by client_id.
+## Vaults
+
+Vault:
+- id
+- name
+- cipher_key
+- created_at
+- updated_at
+
+## Vault Entries
+
+Entry:
+- id
+- vault_id
+- label
+- username
+- password
+- notes
+- extra_nodes
+- status
+- created_at
+- updated_at
 
 ### Roles
 
-- SystemAdmin
-- FilesAdmin
-- FilesEditor
-- FilesViewer
+- Admin
+- Viewer
 
 ### Permissions
 
-- clients.create
-- clients.edit
-- clients.delete
-- clients.list
-- clients.view
-- clients.manage
-- buckets.create
-- buckets.edit
-- buckets.delete
-- buckets.list
-- buckets.view
-- buckets.manage
+- vaults.create
+- vaults.edit
+- vaults.delete
+- vaults.list
+- vaults.view
+- vaults.manage
 - users.create
 - users.edit
 - users.delete
 - users.list
 - users.view
 - users.manage
-- dirs.create
-- dirs.edit
-- dirs.delete
-- dirs.list
-- dirs.view
-- dirs.manage
-- files.create
-- files.edit
-- files.delete
-- files.list
-- files.view
-- files.manage
+- entries.create
+- entries.edit
+- entries.delete
+- entries.list
+- entries.view
+- entries.manage
 
 ### Roles to Permissions Mapping
 
-SystemAdmin:
-- clients.create
-- clients.edit
-- clients.delete
-- clients.list
-- clients.view
-- clients.manage
-- buckets.create
-- buckets.edit
-- buckets.delete
-- buckets.list
-- buckets.view
-- buckets.manage
+Admin:
+- vaults.create
+- vaults.edit
+- vaults.delete
+- vaults.list
+- vaults.view
+- vaults.manage
 - users.create
 - users.edit
 - users.delete
 - users.list
 - users.view
 - users.manage
+- entries.create
+- entries.edit
+- entries.delete
+- entries.list
+- entries.view
+- entries.manage
 
-FilesAdmin:
-- dirs.create
-- dirs.edit
-- dirs.delete
-- dirs.list
-- dirs.view
-- dirs.manage
-- files.create
-- files.edit
-- files.delete
-- files.list
-- files.view
-- files.manage
-
-Summary: Admins have full access to directories and files
-
-FilesEditor:
-- dirs.list
-- dirs.view
-- files.create
-- files.list
-- files.view
-
-Summary: Editors can view and upload new files
-
-FilesViewer:
-- dirs.list
-- dirs.view
-- files.list
-- files.view
-
-Summary: Viewers can only view directories and files
-
-## Buckets
-
-Buckets are created outside of the application, like in Google Console or using gsutil.
-They are added into the client resources via the CLI.
-
-When adding a bucket, make sure it already exists in the cloud storage.
-
-```bash
-./memo-api buckets list client_id
-./memo-api buckets create client_id bucket_name
-./memo-api buckets delete bucket_id
-```
-
-## Models
-
-Bucket:
-- id
-- client_id
-- name
-- images_only
-- created_at
-
-Dir:
-- id
-- bucket_id
-- name
-- label
-- file_count
-- created_at
-- updated_at
-
-File:
-- id
-- dir_id 
-- name
-- filename
-- content_type
-- size
-- is_image
-- img_dimention 
-- img_versions
-- created_at
-- updated_at
+Viewer:
+- vaults.list
+- vaults.view
+- users.list
+- users.view
+- entries.list
+- entries.view
 
 ## API Endpoints for regular users
 
