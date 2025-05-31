@@ -1,0 +1,59 @@
+<nav class="navbar is-dark" role="navigation" aria-label="main navigation">
+    <div class="navbar-brand">
+        <a class="navbar-item" href="/">
+            <span class="is-flex is-justify-content-space-between">
+                <img src="/assets/images/logos/memories-logo-50x50.png" alt="Memories" width="28" height="28">
+                <strong class="pl-1">Memories</strong>
+            </span>
+        </a>
+
+        {% match t.actor %}
+            {% when Some with (actor) %}
+            <a
+                role="button"
+                class="navbar-burger navbar-menu-header-group"
+                aria-label="menu"
+                aria-expanded="false"
+                data-target="main-menu"
+                id="main-menu-burger"
+            >
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+            </a>
+            {% when None %}
+        {% endmatch %}
+    </div>
+
+    {% match t.actor %}
+        {% when Some with (actor) %}
+        <div class="navbar-menu navbar-menu-header-group" id="main-menu">
+            <div class="navbar-end">
+                <div class="navbar-item">
+                    {% include "widgets/set_theme.html" %}
+                </div>
+                <div class="navbar-item">
+                    <a href="/profile" class="has-text-white">
+                        <span class="user-info">
+                            <span class="icon"><i class="fas fa-user"></i></span>
+                            <span>{{ actor.user.username }}</span>
+                        </span>
+                    </a>
+                </div>
+                <div class="navbar-item">
+                    <div class="buttons">
+                        <a
+                            id="btn-logout"
+                            class="button is-light"
+                            hx-post="/logout"
+                            hx-swap="innerHTML"
+                        >
+                            Log out
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% when None %}
+    {% endmatch %}
+</nav>

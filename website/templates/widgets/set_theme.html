@@ -1,0 +1,13 @@
+{% if t.theme == "light" %}
+<button class="button is-small is-dark" title="Switch to dark mode" hx-post="/prefs/theme/dark" hx-swap="outerHTML">
+    <span class="icon">
+        <i class="fas fa-moon"></i>
+    </span>
+</button>
+{% else %}
+<button class="button is-small is-dark" title="Switch to light mode" hx-post="/prefs/theme/light" hx-swap="outerHTML">
+    <span class="icon">
+        <i class="fas fa-sun"></i>
+    </span>
+</button>
+{% endif %}

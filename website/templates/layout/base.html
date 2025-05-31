@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ t.theme }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memories - {{+ t.title }}</title>
+
+<link rel="stylesheet" href="/assets/vendors/fontawesome-free/6.6.0/css/all.min.css" />
+<link rel="stylesheet" href="/assets/vendors/bulma/1.0.2/css/bulma.min.css" />
+<link rel="stylesheet" href="{{ t.assets.main_css }}">
+
+{% for style in t.styles %}
+<link rel="stylesheet" href="{{ style }}" />
+{% endfor %}
+</head>
+
+<body>
+<div class="main-w">
+{% include "layout/nav.html" %}
+
+{% block content %}
+{% endblock %}
+
+{% include "layout/footer.html" %}
+</div>
+
+
+<script src="/assets/vendors/htmx/2.0.2/js/htmx.min.js"></script>
+<script src="/assets/vendors/alpinejs/3.14.9/alpinejs.min.js"></script>
+
+<script src="{{ t.assets.main_js }}"></script>
+
+{% for script in t.scripts %}
+<script src="{{ script }}"></script>
+{% endfor %}
+
+{% for script in t.async_scripts %}
+<script async src="{{ script }}"></script>
+{% endfor %}
+
+<script>
+{% for line in t.script_vars %}
+{{ line|safe  }}
+{% endfor %}
+</script>
+
+{% match t.ga_tag_id %}
+    {% when Some with (ga_tag_id) %}
+        <script async src="https://www.googletagmanager.com/gtag/js?id={{ ga_tag_id }}"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag() { dataLayer.push(arguments); }
+            gtag('js', new Date());
+            gtag('config', '{{ ga_tag_id }}');
+        </script>
+    {% when None %}
+{% endmatch %}
+</body>
+</html>

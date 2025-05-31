@@ -1,0 +1,26 @@
+{% match error_message %}
+    {% when Some with (msg) %}
+    <div class="error-message mb-5 tag is-danger">
+        <p>{{ msg }}</p>
+    </div>
+    {% when None %}
+{% endmatch %}
+
+<div id="photo-gallery" class="photo-grid">
+    {% for photo in photos %}
+    <div class="photo-grid-item">
+        <div class="photo-item">
+            <a
+                href="{{ photo.preview.url }}"
+                data-pswp-width="{{ photo.preview.dimension.width }}"
+                data-pswp-height="{{ photo.preview.dimension.height }}"
+                data-pswp-src="{{ photo.preview.url }}"
+                data-cropped="true"
+                class="photo-item-src"
+            >
+                <img src="{{ photo.thumb.url }}" alt="{{ photo.name }}" loading="lazy"/>
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+</div>

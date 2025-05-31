@@ -1,0 +1,16 @@
+{% if can_delete_photos %}
+<button id="btn-edit-photos" class="button mr-2">
+    Edit Photos
+</button>
+{% endif %}
+
+{% if can_add_photos %}
+<a href="/albums/{{ album.id }}/upload" class="button is-primary">
+    <span class="icon is-small">
+        <i class="fas fa-plus"></i>
+    </span>
+    <span>Add Photos</span>
+</a>
+{% endif %}
+
+<span id="photos-count-w" class="ml-5"></span>
