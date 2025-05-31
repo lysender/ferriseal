@@ -24,6 +24,15 @@ Workflow:
 - Encrypted data decrypted in the client
 - User should be able to copy the password or secret to clipboard
 
+## Migration setup
+
+```
+diesel setup --database-url=sqlite://db/db.sqlite3
+diesel migration generate create_users --database-url=sqlite://db/db.sqlite3
+diesel migration generate create_vaults --database-url=sqlite://db/db.sqlite3
+diesel migration generate create_entries --database-url=sqlite://db/db.sqlite3
+```
+
 It is designed for personal use and not indended for large number of concurrent users.
 The goal of the service is to provide an economical way to store and retrieve
 files in the cloud.
