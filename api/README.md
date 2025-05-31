@@ -33,6 +33,10 @@ diesel migration generate create_vaults --database-url=sqlite://db/db.sqlite3
 diesel migration generate create_entries --database-url=sqlite://db/db.sqlite3
 ```
 
+## Encryption crates
+
+- `aes-gcm`
+
 It is designed for personal use and not indended for large number of concurrent users.
 The goal of the service is to provide an economical way to store and retrieve
 files in the cloud.

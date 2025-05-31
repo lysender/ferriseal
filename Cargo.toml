@@ -1,9 +1,10 @@
 [workspace]
 resolver = "2"
 
-members = [ "api", "memo", "website" ]
+members = [ "api", "cipher", "memo", "website" ]
 
 [workspace.dependencies]
+aes-gcm = "0.10.3"
 askama = { version = "0.14.0" }
 async-trait = "0.1.88"
 argon2 = { version = "0.5.3", features = ["std"] }
