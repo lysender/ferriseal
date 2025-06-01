@@ -1,10 +1,10 @@
-use std::path::PathBuf;
+use std::path::PathBuf;er
 
 use axum::extract::rejection::JsonRejection;
 use axum::response::IntoResponse;
 use axum::{body::Body, http::StatusCode, response::Response};
 use deadpool_diesel::{InteractError, PoolError};
-use memo::role::{InvalidPermissionsError, InvalidRolesError};
+use dto::role::{InvalidPermissionsError, InvalidRolesError};
 use serde::{Deserialize, Serialize};
 use snafu::{Backtrace, ErrorCompat, Snafu};
 
@@ -66,11 +66,17 @@ pub enum Error {
     #[snafu(display("Maximum number of clients reached: 10"))]
     MaxClientsReached,
 
+    #[snafu(display("Maximum number of orgs reached: 10"))]
+    MaxOrgsReached,
+
     #[snafu(display("Maximum number of users reached: 100"))]
     MaxUsersReached,
 
     #[snafu(display("Maximum number of buckets reached: 50"))]
     MaxBucketsReached,
+
+    #[snafu(display("Maximum number of vaults reached: 10"))]
+    MaxVaultsReached,
 
     #[snafu(display("Maximum number of directories reached: 1000"))]
     MaxDirsReached,
@@ -188,6 +194,7 @@ impl From<&Error> for StatusCode {
     fn from(err: &Error) -> Self {
         match err {
             Error::Validation { .. } => StatusCode::BAD_REQUEST,
+            Error::MaxOrgsReached => StatusCode::BAD_REQUEST,
             Error::MaxClientsReached => StatusCode::BAD_REQUEST,
             Error::MaxUsersReached => StatusCode::BAD_REQUEST,
             Error::MaxBucketsReached => StatusCode::BAD_REQUEST,

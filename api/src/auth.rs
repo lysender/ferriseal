@@ -1,19 +1,15 @@
 use validator::Validate;
 
-use memo::actor::{Actor, ActorPayload, AuthResponse, Credentials};
+use crate::token::{create_auth_token, verify_auth_token};
+use dto::actor::{Actor, ActorPayload, AuthResponse, Credentials};
 use password::verify_password;
 use snafu::{OptionExt, ensure};
-use token::{create_auth_token, verify_auth_token};
 
 use crate::error::{
     InactiveUserSnafu, InvalidClientSnafu, InvalidPasswordSnafu, UserNotFoundSnafu, ValidationSnafu,
 };
 use crate::{Result, state::AppState};
-use memo::validators::flatten_errors;
-
-pub mod password;
-pub mod token;
-pub mod user;
+use vault::validators::flatten_errors;
 
 pub async fn authenticate(state: &AppState, credentials: &Credentials) -> Result<AuthResponse> {
     let errors = credentials.validate();

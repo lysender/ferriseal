@@ -7,19 +7,18 @@ use crate::{
     Result,
     error::{InvalidAuthTokenSnafu, WhateverSnafu},
 };
-use memo::actor::ActorPayload;
+use dto::actor::ActorPayload;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct Claims {
     sub: String,
-    cid: String,
-    bid: Option<String>,
+    oid: String,
     scope: String,
     exp: usize,
 }
 
 // Duration in seconds
-const EXP_DURATION: i64 = 60 * 60 * 24 * 7; // 1 week
+const EXP_DURATION: i64 = 60 * 60 * 24; // 1 day
 
 pub fn create_auth_token(actor: &ActorPayload, secret: &str) -> Result<String> {
     let exp = Utc::now() + Duration::seconds(EXP_DURATION);
@@ -27,8 +26,7 @@ pub fn create_auth_token(actor: &ActorPayload, secret: &str) -> Result<String> {
 
     let claims = Claims {
         sub: data.id,
-        cid: data.client_id,
-        bid: data.default_bucket_id,
+        oid: data.org_id,
         scope: data.scope,
         exp: exp.timestamp() as usize,
     };
@@ -61,8 +59,7 @@ pub fn verify_auth_token(token: &str, secret: &str) -> Result<ActorPayload> {
 
     Ok(ActorPayload {
         id: decoded.claims.sub,
-        client_id: decoded.claims.cid,
-        default_bucket_id: decoded.claims.bid,
+        org_id: decoded.claims.oid,
         scope: decoded.claims.scope,
     })
 }
@@ -76,9 +73,8 @@ mod tests {
         // Generate token
         let actor = ActorPayload {
             id: "thor01".to_string(),
-            client_id: "client01".to_string(),
-            default_bucket_id: None,
-            scope: "auth files".to_string(),
+            org_id: "org01".to_string(),
+            scope: "auth vault".to_string(),
         };
         let token = create_auth_token(&actor, "secret").unwrap();
         assert!(token.len() > 0);
@@ -86,8 +82,8 @@ mod tests {
         // Validate it back
         let actor = verify_auth_token(&token, "secret").unwrap();
         assert_eq!(actor.id, "thor01".to_string());
-        assert_eq!(actor.client_id, "client01".to_string());
-        assert_eq!(actor.scope, "auth files".to_string());
+        assert_eq!(actor.org_id, "org01".to_string());
+        assert_eq!(actor.scope, "auth vault".to_string());
     }
 
     #[test]

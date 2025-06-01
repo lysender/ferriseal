@@ -1,15 +1,9 @@
-use std::sync::Arc;
-
 use serde::Serialize;
-
+use std::sync::Arc;
 use tracing::error;
 
-use crate::{
-    Result,
-    config::Config,
-    db::DbMapper,
-    storage::{create_storage_client, test_list_hmac_keys},
-};
+use crate::{Result, config::Config};
+use db::db::DbMapper;
 
 #[derive(Serialize)]
 pub struct LiveStatus {
@@ -25,7 +19,6 @@ pub struct HealthStatus {
 
 #[derive(Serialize)]
 pub struct HealthChecks {
-    pub cloud_storage: String,
     pub database: String,
 }
 
@@ -38,7 +31,6 @@ impl HealthStatus {
 impl HealthChecks {
     pub fn new() -> Self {
         Self {
-            cloud_storage: "DOWN".to_string(),
             database: "DOWN".to_string(),
         }
     }
@@ -75,22 +67,9 @@ pub async fn check_readiness(config: &Config, db: Arc<DbMapper>) -> Result<Healt
 async fn perform_checks(config: &Config, db: Arc<DbMapper>) -> Result<HealthChecks> {
     let mut checks = HealthChecks::new();
 
-    checks.cloud_storage = check_cloud_storage(config).await?;
     checks.database = check_database(db).await?;
 
     Ok(checks)
-}
-
-async fn check_cloud_storage(config: &Config) -> Result<String> {
-    let client = create_storage_client(config.cloud.credentials.as_str()).await?;
-    match test_list_hmac_keys(&client, config.cloud.project_id.as_str()).await {
-        Ok(_) => Ok("UP".to_string()),
-        Err(e) => {
-            let msg = format!("{}", e);
-            error!(msg);
-            Ok("DOWN".to_string())
-        }
-    }
 }
 
 async fn check_database(db: Arc<DbMapper>) -> Result<String> {

@@ -4,9 +4,10 @@ use std::sync::Arc;
 use crate::{
     Result,
     config::Config,
-    db::{DbMapper, create_db_mapper},
     storage::{CloudStorable, StorageClient},
 };
+
+use db::db::{DbMapper, create_db_mapper};
 
 #[derive(Clone, FromRef)]
 pub struct AppState {
@@ -30,8 +31,8 @@ pub fn create_test_app_state() -> AppState {
     use std::path::PathBuf;
 
     use crate::config::{CloudConfig, DbConfig, ServerConfig};
-    use crate::db::create_test_db_mapper;
     use crate::storage::StorageTestClient;
+    use db::db::create_test_db_mapper;
 
     let config = Config {
         jwt_secret: "0196d1dbbfd87819b9183f14ac3ed485".to_string(),
