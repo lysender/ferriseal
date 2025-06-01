@@ -91,6 +91,7 @@ Create a Google Cloud Service Account with the following roles:
 Org:
 - id
 - name
+- admin
 - created_at
 
 ## Users

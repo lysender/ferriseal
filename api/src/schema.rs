@@ -19,6 +19,7 @@ diesel::table! {
     orgs (id) {
         id -> Text,
         name -> Text,
+        admin -> Integer,
         created_at -> BigInt,
     }
 }
