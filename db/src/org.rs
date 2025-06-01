@@ -242,19 +242,19 @@ impl OrgRepoable for OrgRepo {
     }
 }
 
-#[cfg(test)]
+#[cfg(feature = "test")]
 pub const TEST_ORG_ID: &'static str = "0196d19e01b1745980a8419edd88e3d1";
 
-#[cfg(test)]
+#[cfg(feature = "test")]
 pub const TEST_ADMIN_ORG_ID: &'static str = "0196d1a2784a72959c97eef5dbc69dc7";
 
-#[cfg(test)]
+#[cfg(feature = "test")]
 pub const TEST_NEW_ORG_ID: &'static str = "0196d1a2784a72959c97eef5dbc69dc7";
 
-#[cfg(test)]
+#[cfg(feature = "test")]
 pub struct OrgTestRepo {}
 
-#[cfg(test)]
+#[cfg(feature = "test")]
 pub fn create_test_org() -> Org {
     let today = chrono::Utc::now().timestamp();
     Org {
@@ -265,7 +265,7 @@ pub fn create_test_org() -> Org {
     }
 }
 
-#[cfg(test)]
+#[cfg(feature = "test")]
 pub fn create_test_admin_org() -> Org {
     let today = chrono::Utc::now().timestamp();
     Org {
@@ -276,7 +276,7 @@ pub fn create_test_admin_org() -> Org {
     }
 }
 
-#[cfg(test)]
+#[cfg(feature = "test")]
 pub fn create_test_new_org() -> Org {
     let today = chrono::Utc::now().timestamp();
     Org {
@@ -287,7 +287,7 @@ pub fn create_test_new_org() -> Org {
     }
 }
 
-#[cfg(test)]
+#[cfg(feature = "test")]
 #[async_trait]
 impl OrgRepoable for OrgTestRepo {
     async fn list(&self, org_id: Option<String>) -> Result<Vec<Org>> {

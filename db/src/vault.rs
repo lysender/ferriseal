@@ -235,10 +235,10 @@ impl VaultRepoable for VaultRepo {
     }
 }
 
-#[cfg(test)]
+#[cfg(feature = "test")]
 pub const TEST_VAULT_ID: &'static str = "0196d1bbc22f79c89cdbc8beced0d2f0";
 
-#[cfg(test)]
+#[cfg(feature = "test")]
 pub fn create_test_vault() -> VaultDto {
     use crate::org::TEST_ORG_ID;
     let today = chrono::Utc::now().timestamp();
@@ -253,10 +253,10 @@ pub fn create_test_vault() -> VaultDto {
     }
 }
 
-#[cfg(test)]
+#[cfg(feature = "test")]
 pub struct VaultTestRepo {}
 
-#[cfg(test)]
+#[cfg(feature = "test")]
 #[async_trait]
 impl VaultRepoable for VaultTestRepo {
     async fn list(&self, org_id: &str) -> Result<Vec<VaultDto>> {

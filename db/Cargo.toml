@@ -14,3 +14,6 @@ validator.workspace = true
 dto = { path = "../dto" }
 vault = { path = "../vault" }
 password = { path = "../password" }
+
+[features]
+test = []

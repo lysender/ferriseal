@@ -415,13 +415,13 @@ impl UserRepoable for UserRepo {
     }
 }
 
-#[cfg(test)]
+#[cfg(feature = "test")]
 pub const TEST_ADMIN_USER_ID: &'static str = "0196d1ace11e715bbc32fd4e88226f56";
 
-#[cfg(test)]
+#[cfg(feature = "test")]
 pub const TEST_USER_ID: &'static str = "0196d1adc6807c2c8aa49982466faf88";
 
-#[cfg(test)]
+#[cfg(feature = "test")]
 pub fn create_test_admin_user() -> Result<User> {
     use crate::org::TEST_ADMIN_ORG_ID;
 
@@ -440,7 +440,7 @@ pub fn create_test_admin_user() -> Result<User> {
     })
 }
 
-#[cfg(test)]
+#[cfg(feature = "test")]
 pub fn create_test_user() -> Result<User> {
     use crate::org::TEST_ORG_ID;
 
@@ -459,10 +459,10 @@ pub fn create_test_user() -> Result<User> {
     })
 }
 
-#[cfg(test)]
+#[cfg(feature = "test")]
 pub struct UserTestRepo {}
 
-#[cfg(test)]
+#[cfg(feature = "test")]
 #[async_trait]
 impl UserRepoable for UserTestRepo {
     async fn list(&self, org_id: &str) -> Result<Vec<User>> {

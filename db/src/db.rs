@@ -31,7 +31,7 @@ pub fn create_db_mapper(database_url: &str) -> DbMapper {
     }
 }
 
-#[cfg(test)]
+#[cfg(feature = "test")]
 pub fn create_test_db_mapper() -> DbMapper {
     use crate::entry::EntryTestRepo;
     use crate::org::OrgTestRepo;

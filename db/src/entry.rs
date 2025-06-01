@@ -297,10 +297,10 @@ impl EntryRepoable for EntryRepo {
     }
 }
 
-#[cfg(test)]
+#[cfg(feature = "test")]
 pub struct EntryTestRepo {}
 
-#[cfg(test)]
+#[cfg(feature = "test")]
 #[async_trait]
 impl EntryRepoable for EntryTestRepo {
     async fn list(
