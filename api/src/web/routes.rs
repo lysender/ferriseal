@@ -1,10 +1,7 @@
 use axum::{
-    Router,
-    extract::DefaultBodyLimit,
-    middleware,
-    routing::{any, get, post, put},
+    Router, middleware,
+    routing::{any, get, post},
 };
-use tower_http::limit::RequestBodyLimitLayer;
 
 use super::{
     handler::{
@@ -20,8 +17,8 @@ use super::{
         user_authz_handler, user_permissions_handler,
     },
     middleware::{
-        auth_middleware, bucket_middleware, client_middleware, dir_middleware, file_middleware,
-        require_auth_middleware, user_middleware,
+        auth_middleware, entry_middleware, org_middleware, require_auth_middleware,
+        user_middleware, vault_middleware,
     },
 };
 use crate::state::AppState;
@@ -45,7 +42,7 @@ fn public_routes(state: AppState) -> Router<AppState> {
 
 fn private_routes(state: AppState) -> Router<AppState> {
     Router::new()
-        .nest("/clients", clients_routes(state.clone()))
+        .nest("/orgs", orgss_routes(state.clone()))
         .nest("/user", user_routes(state.clone()))
         .layer(middleware::from_fn_with_state(
             state.clone(),
@@ -58,10 +55,10 @@ fn private_routes(state: AppState) -> Router<AppState> {
         .with_state(state)
 }
 
-fn clients_routes(state: AppState) -> Router<AppState> {
+fn orgss_routes(state: AppState) -> Router<AppState> {
     Router::new()
         .route("/", get(list_clients_handler).post(create_client_handler))
-        .nest("/{client_id}", inner_client_routes(state.clone()))
+        .nest("/{org_id}", inner_org_routes(state.clone()))
         .with_state(state)
 }
 
@@ -74,7 +71,7 @@ pub fn user_routes(state: AppState) -> Router<AppState> {
         .with_state(state)
 }
 
-fn inner_client_routes(state: AppState) -> Router<AppState> {
+fn inner_org_routes(state: AppState) -> Router<AppState> {
     Router::new()
         .route(
             "/",
@@ -82,17 +79,16 @@ fn inner_client_routes(state: AppState) -> Router<AppState> {
                 .patch(update_client_handler)
                 .delete(delete_client_handler),
         )
-        .route("/default_bucket_id", put(update_default_bucket_handler))
-        .nest("/users", client_users_routes(state.clone()))
-        .nest("/buckets", client_buckets_routes(state.clone()))
+        .nest("/users", org_users_routes(state.clone()))
+        .nest("/vaults", org_vaults_routes(state.clone()))
         .layer(middleware::from_fn_with_state(
             state.clone(),
-            client_middleware,
+            org_middleware,
         ))
         .with_state(state)
 }
 
-fn client_users_routes(state: AppState) -> Router<AppState> {
+fn org_users_routes(state: AppState) -> Router<AppState> {
     Router::new()
         .route("/", get(list_users_handler).post(create_user_handler))
         .nest("/{user_id}", inner_user_routes(state.clone()))
@@ -117,32 +113,32 @@ fn inner_user_routes(state: AppState) -> Router<AppState> {
         .with_state(state)
 }
 
-fn client_buckets_routes(state: AppState) -> Router<AppState> {
+fn org_vaults_routes(state: AppState) -> Router<AppState> {
     Router::new()
         .route("/", get(list_buckets_handler).post(create_bucket_handler))
-        .nest("/{bucket_id}", inner_bucket_routes(state.clone()))
+        .nest("/{vault_id}", inner_vault_routes(state.clone()))
         .with_state(state)
 }
 
-fn inner_bucket_routes(state: AppState) -> Router<AppState> {
+fn inner_vault_routes(state: AppState) -> Router<AppState> {
     Router::new()
         .route("/", get(get_bucket_handler).delete(delete_bucket_handler))
-        .nest("/dirs", dir_routes(state.clone()))
+        .nest("/entries", entry_routes(state.clone()))
         .layer(middleware::from_fn_with_state(
             state.clone(),
-            bucket_middleware,
+            vault_middleware,
         ))
         .with_state(state)
 }
 
-fn dir_routes(state: AppState) -> Router<AppState> {
+fn entry_routes(state: AppState) -> Router<AppState> {
     Router::new()
         .route("/", get(list_dirs_handler).post(create_dir_handler))
-        .nest("/{dir_id}", inner_dir_routes(state.clone()))
+        .nest("/{entry_id}", inner_entry_routes(state.clone()))
         .with_state(state)
 }
 
-fn inner_dir_routes(state: AppState) -> Router<AppState> {
+fn inner_entry_routes(state: AppState) -> Router<AppState> {
     Router::new()
         .route(
             "/",
@@ -150,29 +146,9 @@ fn inner_dir_routes(state: AppState) -> Router<AppState> {
                 .patch(update_dir_handler)
                 .delete(delete_dir_handler),
         )
-        .nest("/files", files_routes(state.clone()))
         .layer(middleware::from_fn_with_state(
             state.clone(),
-            dir_middleware,
-        ))
-        .with_state(state)
-}
-
-fn files_routes(state: AppState) -> Router<AppState> {
-    Router::new()
-        .route("/", get(list_files_handler).post(create_file_handler))
-        .nest("/{file_id}", inner_file_routes(state.clone()))
-        .layer(DefaultBodyLimit::max(8000000))
-        .layer(RequestBodyLimitLayer::new(8000000))
-        .with_state(state)
-}
-
-fn inner_file_routes(state: AppState) -> Router<AppState> {
-    Router::new()
-        .route("/", get(get_file_handler).delete(delete_file_handler))
-        .layer(middleware::from_fn_with_state(
-            state.clone(),
-            file_middleware,
+            entry_middleware,
         ))
         .with_state(state)
 }

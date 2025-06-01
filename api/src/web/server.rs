@@ -95,78 +95,72 @@ async fn shutdown_signal() {
 }
 
 #[cfg(test)]
-fn create_test_app() -> TestServer {
-    use crate::state::create_test_app_state;
-
-    let state = create_test_app_state();
-
-    let app = Router::new()
-        .merge(all_routes(state))
-        .layer(middleware::map_response(response_mapper));
-
-    TestServer::builder()
-        .save_cookies()
-        .default_content_type("application/json")
-        .expect_success_by_default()
-        .mock_transport()
-        .build(app)
-        .unwrap()
-}
-
-#[cfg(test)]
-fn create_test_user_auth_token() -> Result<String> {
-    use crate::authx::token::create_auth_token;
-    use crate::authx::user::TEST_USER_ID;
-    use crate::client::TEST_CLIENT_ID;
-    use crate::state::create_test_app_state;
-    use memo::actor::ActorPayload;
-
-    let state = create_test_app_state();
-
-    let actor = ActorPayload {
-        id: TEST_USER_ID.to_string(),
-        client_id: TEST_CLIENT_ID.to_string(),
-        default_bucket_id: None,
-        scope: "auth files".to_string(),
-    };
-
-    create_auth_token(&actor, &state.config.jwt_secret)
-}
-
-#[cfg(test)]
-fn create_test_admin_auth_token() -> Result<String> {
-    use crate::authx::token::create_auth_token;
-    use crate::authx::user::TEST_ADMIN_USER_ID;
-    use crate::client::TEST_ADMIN_CLIENT_ID;
-    use crate::state::create_test_app_state;
-    use memo::actor::ActorPayload;
-
-    let state = create_test_app_state();
-
-    let actor = ActorPayload {
-        id: TEST_ADMIN_USER_ID.to_string(),
-        client_id: TEST_ADMIN_CLIENT_ID.to_string(),
-        default_bucket_id: None,
-        scope: "auth files".to_string(),
-    };
-
-    create_auth_token(&actor, &state.config.jwt_secret)
-}
-
-#[cfg(test)]
 mod tests {
-    use crate::{
-        authx::user::{TEST_ADMIN_USER_ID, TEST_USER_ID},
-        bucket::TEST_BUCKET_ID,
-        client::{TEST_ADMIN_CLIENT_ID, TEST_CLIENT_ID},
-        dir::{Dir, TEST_DIR_ID},
+    use db::{
+        org::{TEST_ADMIN_ORG_ID, TEST_ORG_ID},
+        user::{TEST_ADMIN_USER_ID, TEST_USER_ID},
+        vault::TEST_VAULT_ID,
     };
 
     use super::*;
-    use memo::{
-        bucket::BucketDto, client::ClientDto, file::FileDto, pagination::Paginated, user::UserDto,
+    use dto::{
+        entry::EntryDto, org::OrgDto, pagination::PaginatedDto, user::UserDto, vault::VaultDto,
     };
     use serde_json::json;
+
+    fn create_test_app() -> TestServer {
+        use crate::state::create_test_app_state;
+
+        let state = create_test_app_state();
+
+        let app = Router::new()
+            .merge(all_routes(state))
+            .layer(middleware::map_response(response_mapper));
+
+        TestServer::builder()
+            .save_cookies()
+            .default_content_type("application/json")
+            .expect_success_by_default()
+            .mock_transport()
+            .build(app)
+            .unwrap()
+    }
+
+    fn create_test_user_auth_token() -> Result<String> {
+        use crate::state::create_test_app_state;
+        use crate::token::create_auth_token;
+        use db::org::TEST_ORG_ID;
+        use db::user::TEST_USER_ID;
+        use dto::actor::ActorPayload;
+
+        let state = create_test_app_state();
+
+        let actor = ActorPayload {
+            id: TEST_USER_ID.to_string(),
+            org_id: TEST_ORG_ID.to_string(),
+            scope: "auth vault".to_string(),
+        };
+
+        create_auth_token(&actor, &state.config.jwt_secret)
+    }
+
+    fn create_test_admin_auth_token() -> Result<String> {
+        use crate::state::create_test_app_state;
+        use crate::token::create_auth_token;
+        use db::org::TEST_ADMIN_ORG_ID;
+        use db::user::TEST_ADMIN_USER_ID;
+        use dto::actor::ActorPayload;
+
+        let state = create_test_app_state();
+
+        let actor = ActorPayload {
+            id: TEST_ADMIN_USER_ID.to_string(),
+            org_id: TEST_ADMIN_ORG_ID.to_string(),
+            scope: "auth vault".to_string(),
+        };
+
+        create_auth_token(&actor, &state.config.jwt_secret)
+    }
 
     #[tokio::test]
     async fn test_home_page() {
@@ -228,34 +222,34 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_list_clients_as_user() {
+    async fn test_list_orgs_as_user() {
         let server = create_test_app();
         let token = create_test_user_auth_token().unwrap();
-        let clients: Vec<ClientDto> = server
-            .get("/clients")
+        let orgs: Vec<OrgDto> = server
+            .get("/orgs")
             .authorization_bearer(token.as_str())
             .await
             .json();
 
         // Should only see its own
-        assert_eq!(clients.len(), 1);
+        assert_eq!(orgs.len(), 1);
 
-        let client = clients.first().unwrap();
-        assert_eq!(client.id.as_str(), TEST_CLIENT_ID);
+        let org = orgs.first().unwrap();
+        assert_eq!(org.id.as_str(), TEST_ORG_ID);
     }
 
     #[tokio::test]
-    async fn test_list_clients_as_admin() {
+    async fn test_list_orgs_as_admin() {
         let server = create_test_app();
         let token = create_test_admin_auth_token().unwrap();
-        let clients: Vec<ClientDto> = server
-            .get("/clients")
+        let orgs: Vec<OrgDto> = server
+            .get("/orgs")
             .authorization_bearer(token.as_str())
             .await
             .json();
 
-        // Should see all clients
-        assert_eq!(clients.len(), 2);
+        // Should see all orgs
+        assert_eq!(orgs.len(), 2);
     }
 
     #[tokio::test]
@@ -285,24 +279,24 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_user_client_as_user() {
+    async fn test_get_user_org_as_user() {
         let server = create_test_app();
         let token = create_test_user_auth_token().unwrap();
-        let url = format!("/clients/{}", TEST_CLIENT_ID);
-        let client: ClientDto = server
+        let url = format!("/orgs/{}", TEST_ORG_ID);
+        let org: OrgDto = server
             .get(url.as_str())
             .authorization_bearer(token.as_str())
             .await
             .json();
 
-        assert_eq!(client.id.as_str(), TEST_CLIENT_ID);
+        assert_eq!(org.id.as_str(), TEST_ORG_ID);
     }
 
     #[tokio::test]
-    async fn test_get_admin_client_as_user() {
+    async fn test_get_admin_org_as_user() {
         let server = create_test_app();
         let token = create_test_user_auth_token().unwrap();
-        let url = format!("/clients/{}", TEST_ADMIN_CLIENT_ID);
+        let url = format!("/orgs/{}", TEST_ADMIN_ORG_ID);
         let response = server
             .get(url.as_str())
             .authorization_bearer(token.as_str())
@@ -313,38 +307,38 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_user_client_as_admin() {
+    async fn test_get_user_org_as_admin() {
         let server = create_test_app();
         let token = create_test_admin_auth_token().unwrap();
-        let url = format!("/clients/{}", TEST_CLIENT_ID);
-        let client: ClientDto = server
+        let url = format!("/orgs/{}", TEST_ORG_ID);
+        let org: OrgDto = server
             .get(url.as_str())
             .authorization_bearer(token.as_str())
             .await
             .json();
 
-        assert_eq!(client.id.as_str(), TEST_CLIENT_ID);
+        assert_eq!(org.id.as_str(), TEST_ORG_ID);
     }
 
     #[tokio::test]
-    async fn test_get_admin_client_as_admin() {
+    async fn test_get_admin_org_as_admin() {
         let server = create_test_app();
         let token = create_test_admin_auth_token().unwrap();
-        let url = format!("/clients/{}", TEST_ADMIN_CLIENT_ID);
-        let client: ClientDto = server
+        let url = format!("/orgs/{}", TEST_ADMIN_ORG_ID);
+        let org: OrgDto = server
             .get(url.as_str())
             .authorization_bearer(token.as_str())
             .await
             .json();
 
-        assert_eq!(client.id.as_str(), TEST_ADMIN_CLIENT_ID);
+        assert_eq!(org.id.as_str(), TEST_ADMIN_ORG_ID);
     }
 
     #[tokio::test]
-    async fn test_get_client_not_found_as_admin() {
+    async fn test_get_org_not_found_as_admin() {
         let server = create_test_app();
         let token = create_test_admin_auth_token().unwrap();
-        let url = "/clients/0196d27b10c47e1abb9aae6cf3eea36a";
+        let url = "/orgs/0196d27b10c47e1abb9aae6cf3eea36a";
         let response = server
             .get(url)
             .authorization_bearer(token.as_str())
@@ -355,26 +349,26 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_list_user_buckets_as_user() {
+    async fn test_list_user_vaults_as_user() {
         let server = create_test_app();
         let token = create_test_user_auth_token().unwrap();
-        let url = format!("/clients/{}/buckets", TEST_CLIENT_ID);
-        let buckets: Vec<BucketDto> = server
+        let url = format!("/orgs/{}/vaults", TEST_ORG_ID);
+        let vaults: Vec<VaultDto> = server
             .get(url.as_str())
             .authorization_bearer(token.as_str())
             .await
             .json();
 
-        assert_eq!(buckets.len(), 1);
-        let bucket = buckets.first().unwrap();
-        assert_eq!(bucket.id.as_str(), TEST_BUCKET_ID);
+        assert_eq!(vaults.len(), 1);
+        let vault = vaults.first().unwrap();
+        assert_eq!(vault.id.as_str(), TEST_VAULT_ID);
     }
 
     #[tokio::test]
-    async fn test_list_admin_buckets_as_user() {
+    async fn test_list_admin_vaults_as_user() {
         let server = create_test_app();
         let token = create_test_user_auth_token().unwrap();
-        let url = format!("/clients/{}/buckets", TEST_ADMIN_CLIENT_ID);
+        let url = format!("/orgs/{}/vaults", TEST_ADMIN_ORG_ID);
         let response = server
             .get(url.as_str())
             .authorization_bearer(token.as_str())
@@ -385,70 +379,70 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_list_user_buckets_as_admin() {
+    async fn test_list_user_vaults_as_admin() {
         let server = create_test_app();
         let token = create_test_admin_auth_token().unwrap();
-        let url = format!("/clients/{}/buckets", TEST_CLIENT_ID);
-        let buckets: Vec<BucketDto> = server
+        let url = format!("/orgs/{}/vaults", TEST_ORG_ID);
+        let vaults: Vec<VaultDto> = server
             .get(url.as_str())
             .authorization_bearer(token.as_str())
             .await
             .json();
 
-        assert_eq!(buckets.len(), 1);
-        let bucket = buckets.first().unwrap();
-        assert_eq!(bucket.id.as_str(), TEST_BUCKET_ID);
+        assert_eq!(vaults.len(), 1);
+        let vault = vaults.first().unwrap();
+        assert_eq!(vault.id.as_str(), TEST_VAULT_ID);
     }
 
     #[tokio::test]
-    async fn test_list_admin_buckets_as_admin() {
+    async fn test_list_admin_vaults_as_admin() {
         let server = create_test_app();
         let token = create_test_admin_auth_token().unwrap();
-        let url = format!("/clients/{}/buckets", TEST_ADMIN_CLIENT_ID);
-        let buckets: Vec<BucketDto> = server
+        let url = format!("/orgs/{}/vaults", TEST_ADMIN_ORG_ID);
+        let vaults: Vec<VaultDto> = server
             .get(url.as_str())
             .authorization_bearer(token.as_str())
             .await
             .json();
 
-        assert_eq!(buckets.len(), 0);
+        assert_eq!(vaults.len(), 0);
     }
 
     #[tokio::test]
-    async fn test_get_user_bucket_as_user() {
+    async fn test_get_user_vault_as_user() {
         let server = create_test_app();
         let token = create_test_user_auth_token().unwrap();
-        let url = format!("/clients/{}/buckets/{}", TEST_CLIENT_ID, TEST_BUCKET_ID);
-        let bucket: BucketDto = server
+        let url = format!("/orgs/{}/vaults/{}", TEST_ORG_ID, TEST_VAULT_ID);
+        let vault: VaultDto = server
             .get(url.as_str())
             .authorization_bearer(token.as_str())
             .await
             .json();
 
-        assert_eq!(bucket.id.as_str(), TEST_BUCKET_ID);
+        assert_eq!(vault.id.as_str(), TEST_VAULT_ID);
     }
 
     #[tokio::test]
-    async fn test_get_user_bucket_as_admin() {
+    async fn test_get_user_vault_as_admin() {
         let server = create_test_app();
         let token = create_test_admin_auth_token().unwrap();
-        let url = format!("/clients/{}/buckets/{}", TEST_CLIENT_ID, TEST_BUCKET_ID);
-        let bucket: BucketDto = server
+        let url = format!("/orgs/{}/vaults/{}", TEST_ORG_ID, TEST_VAULT_ID);
+        let vault: VaultDto = server
             .get(url.as_str())
             .authorization_bearer(token.as_str())
             .await
             .json();
 
-        assert_eq!(bucket.id.as_str(), TEST_BUCKET_ID);
+        assert_eq!(vault.id.as_str(), TEST_VAULT_ID);
     }
 
     #[tokio::test]
-    async fn test_get_user_bucket_not_found_as_user() {
+    async fn test_get_user_vault_not_found_as_user() {
         let server = create_test_app();
         let token = create_test_user_auth_token().unwrap();
         let url = format!(
-            "/clients/{}/buckets/0196d277ffc47800ba5e7ffb6a557f31",
-            TEST_CLIENT_ID
+            "/orgs/{}/vaults/0196d277ffc47800ba5e7ffb6a557f31",
+            TEST_ORG_ID
         );
         let response = server
             .get(url.as_str())
@@ -463,7 +457,7 @@ mod tests {
     async fn test_list_user_users_as_user() {
         let server = create_test_app();
         let token = create_test_user_auth_token().unwrap();
-        let url = format!("/clients/{}/users", TEST_CLIENT_ID);
+        let url = format!("/orgs/{}/users", TEST_ORG_ID);
         let users: Vec<UserDto> = server
             .get(url.as_str())
             .authorization_bearer(token.as_str())
@@ -479,7 +473,7 @@ mod tests {
     async fn test_list_user_users_as_admin() {
         let server = create_test_app();
         let token = create_test_admin_auth_token().unwrap();
-        let url = format!("/clients/{}/users", TEST_CLIENT_ID);
+        let url = format!("/orgs/{}/users", TEST_ORG_ID);
         let users: Vec<UserDto> = server
             .get(url.as_str())
             .authorization_bearer(token.as_str())
@@ -492,125 +486,30 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_list_user_dirs_as_user() {
+    async fn test_list_user_entries_as_user() {
         let server = create_test_app();
         let token = create_test_user_auth_token().unwrap();
-        let url = format!(
-            "/clients/{}/buckets/{}/dirs",
-            TEST_CLIENT_ID, TEST_BUCKET_ID
-        );
-        let dirs: Paginated<Dir> = server
+        let url = format!("/orgs/{}/vaults/{}/entries", TEST_ORG_ID, TEST_VAULT_ID,);
+        let listing: PaginatedDto<EntryDto> = server
             .get(url.as_str())
             .authorization_bearer(token.as_str())
             .await
             .json();
 
-        assert_eq!(dirs.meta.total_records, 1);
-        let dir = dirs.data.first().unwrap();
-        assert_eq!(dir.id.as_str(), TEST_DIR_ID);
+        assert_eq!(listing.meta.total_records, 0);
     }
 
     #[tokio::test]
-    async fn test_list_user_dirs_as_admin() {
+    async fn test_list_user_entries_as_admin() {
         let server = create_test_app();
         let token = create_test_admin_auth_token().unwrap();
-        let url = format!(
-            "/clients/{}/buckets/{}/dirs",
-            TEST_CLIENT_ID, TEST_BUCKET_ID
-        );
-        let dirs: Paginated<Dir> = server
+        let url = format!("/orgs/{}/vaults/{}/entries", TEST_ORG_ID, TEST_VAULT_ID,);
+        let listing: PaginatedDto<EntryDto> = server
             .get(url.as_str())
             .authorization_bearer(token.as_str())
             .await
             .json();
 
-        assert_eq!(dirs.meta.total_records, 1);
-        let dir = dirs.data.first().unwrap();
-        assert_eq!(dir.id.as_str(), TEST_DIR_ID);
-    }
-
-    #[tokio::test]
-    async fn test_get_user_dir_as_user() {
-        let server = create_test_app();
-        let token = create_test_user_auth_token().unwrap();
-        let url = format!(
-            "/clients/{}/buckets/{}/dirs/{}",
-            TEST_CLIENT_ID, TEST_BUCKET_ID, TEST_DIR_ID,
-        );
-        let dir: Dir = server
-            .get(url.as_str())
-            .authorization_bearer(token.as_str())
-            .await
-            .json();
-
-        assert_eq!(dir.id.as_str(), TEST_DIR_ID);
-    }
-
-    #[tokio::test]
-    async fn test_get_user_dir_as_admin() {
-        let server = create_test_app();
-        let token = create_test_admin_auth_token().unwrap();
-        let url = format!(
-            "/clients/{}/buckets/{}/dirs/{}",
-            TEST_CLIENT_ID, TEST_BUCKET_ID, TEST_DIR_ID,
-        );
-        let dir: Dir = server
-            .get(url.as_str())
-            .authorization_bearer(token.as_str())
-            .await
-            .json();
-
-        assert_eq!(dir.id.as_str(), TEST_DIR_ID);
-    }
-
-    #[tokio::test]
-    async fn test_get_user_dir_not_found_as_user() {
-        let server = create_test_app();
-        let token = create_test_user_auth_token().unwrap();
-        let url = format!(
-            "/clients/{}/buckets/{}/dirs/0196d28a2ca4792880b19b3a058d24b1",
-            TEST_CLIENT_ID, TEST_BUCKET_ID,
-        );
-        let response = server
-            .get(url.as_str())
-            .authorization_bearer(token.as_str())
-            .expect_failure()
-            .await;
-
-        response.assert_status_not_found();
-    }
-
-    #[tokio::test]
-    async fn test_list_user_files_as_user() {
-        let server = create_test_app();
-        let token = create_test_user_auth_token().unwrap();
-        let url = format!(
-            "/clients/{}/buckets/{}/dirs/{}/files",
-            TEST_CLIENT_ID, TEST_BUCKET_ID, TEST_DIR_ID,
-        );
-        let dir: Paginated<FileDto> = server
-            .get(url.as_str())
-            .authorization_bearer(token.as_str())
-            .await
-            .json();
-
-        assert_eq!(dir.meta.total_records, 0);
-    }
-
-    #[tokio::test]
-    async fn test_list_user_files_as_admin() {
-        let server = create_test_app();
-        let token = create_test_admin_auth_token().unwrap();
-        let url = format!(
-            "/clients/{}/buckets/{}/dirs/{}/files",
-            TEST_CLIENT_ID, TEST_BUCKET_ID, TEST_DIR_ID,
-        );
-        let dir: Paginated<FileDto> = server
-            .get(url.as_str())
-            .authorization_bearer(token.as_str())
-            .await
-            .json();
-
-        assert_eq!(dir.meta.total_records, 0);
+        assert_eq!(listing.meta.total_records, 0);
     }
 }

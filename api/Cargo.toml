@@ -29,3 +29,6 @@ dto = { path = "../dto" }
 vault = { path = "../vault" }
 db = { path = "../db" }
 password = { path = "../password" }
+
+[dev-dependencies]
+db = { path = "../db", features = ["test"]}

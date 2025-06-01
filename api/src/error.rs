@@ -1,4 +1,4 @@
-use std::path::PathBuf;er
+use std::path::PathBuf;
 
 use axum::extract::rejection::JsonRejection;
 use axum::response::IntoResponse;
@@ -33,6 +33,12 @@ pub enum Error {
 
     #[snafu(display("Config error: {}", msg))]
     Config { msg: String },
+
+    #[snafu(display("{}", source))]
+    Db {
+        source: db::Error,
+        backtrace: Backtrace,
+    },
 
     #[snafu(display("Error getting db connection: {}", source))]
     DbPool {
@@ -161,12 +167,6 @@ pub enum Error {
     #[snafu(display("Upload error: {}", source))]
     UploadFile {
         source: std::io::Error,
-        backtrace: Backtrace,
-    },
-
-    #[snafu(display("Exif error: {}", source))]
-    ExifInfo {
-        source: exif::Error,
         backtrace: Backtrace,
     },
 

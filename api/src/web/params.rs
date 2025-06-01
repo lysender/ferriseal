@@ -8,14 +8,27 @@ pub struct Params {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct ClientParams {
-    pub client_id: String,
+pub struct OrgParams {
+    pub org_id: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct UserParams {
     #[allow(dead_code)]
-    pub client_id: String,
+    pub org_id: String,
 
     pub user_id: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct VaultParams {
+    pub org_id: String,
+    pub vault_id: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct EntryParams {
+    pub org_id: String,
+    pub vault_id: String,
+    pub entry_id: String,
 }
