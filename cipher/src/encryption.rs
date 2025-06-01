@@ -10,23 +10,23 @@ use crate::{
     error::{CipherSnafu, DecodeSnafu},
 };
 
-const DEFAULT_ENC_METHOD: &'static str = "xcha20";
+const DEFAULT_ENC_METHOD: &'static str = "xch";
 
 /// Encrypts data with a random key which is encrypted with the master key
 /// Result format: enc_method:key_nonce:key_data|enc_method:input_nonce:input_data
 pub fn encrypt(key: &str, data: &str) -> Result<String> {
     // Create a random key and encrypt it with the main key
     let random_key = XChaCha20Poly1305::generate_key(OsRng);
-    let cipher_key = raw_encrypt(key.as_bytes(), &random_key)?;
+    let cipher_key = xchacha20_encrypt(key.as_bytes(), &random_key)?;
 
     // Now that we have a random key encrypted, encypt the data with it
-    let cipher_data = raw_encrypt(&random_key, data.as_bytes())?;
+    let cipher_data = xchacha20_encrypt(&random_key, data.as_bytes())?;
     Ok(format!("{}|{}", cipher_key, cipher_data))
 }
 
 /// Encrypts data with the provided key
 /// Result format: enc_method:nonce:data
-fn raw_encrypt(key: &[u8], data: &[u8]) -> Result<String> {
+fn xchacha20_encrypt(key: &[u8], data: &[u8]) -> Result<String> {
     let kb = Key::from_slice(key);
     let c = XChaCha20Poly1305::new(&kb);
     let nonce = XChaCha20Poly1305::generate_nonce(&mut OsRng);
@@ -78,7 +78,7 @@ fn decrypt_part(key: &[u8], data: &str) -> Result<Vec<u8>> {
         msg: "Cipher text part format must be valid",
     })?;
 
-    raw_decrypt(
+    xchacha20_decrypt(
         key,
         &BASE64_STANDARD.decode(nonce).context(DecodeSnafu)?,
         &BASE64_STANDARD.decode(data_part).context(DecodeSnafu)?,
@@ -86,7 +86,7 @@ fn decrypt_part(key: &[u8], data: &str) -> Result<Vec<u8>> {
 }
 
 /// Decrypts the data using the provided key and nonce using default enc method
-fn raw_decrypt(key: &[u8], nonce: &[u8], data: &[u8]) -> Result<Vec<u8>> {
+fn xchacha20_decrypt(key: &[u8], nonce: &[u8], data: &[u8]) -> Result<Vec<u8>> {
     let kb = Key::from_slice(key);
     let c = XChaCha20Poly1305::new(&kb);
     let bnonce = XNonce::from_slice(nonce);
