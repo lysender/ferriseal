@@ -1,10 +1,19 @@
-use snafu::Snafu;
+use snafu::{Backtrace, Snafu};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
 pub enum Error {
+    #[snafu(display("Cipher error: {}", msg))]
+    Cipher { msg: String },
+
+    #[snafu(display("Decode error: {}", source))]
+    Decode {
+        source: base64::DecodeError,
+        backtrace: Backtrace,
+    },
+
     #[snafu(display("{}", msg))]
     Whatever { msg: String },
 }
