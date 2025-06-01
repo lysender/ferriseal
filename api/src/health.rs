@@ -2,7 +2,7 @@ use serde::Serialize;
 use std::sync::Arc;
 use tracing::error;
 
-use crate::{Result, config::Config};
+use crate::Result;
 use db::db::DbMapper;
 
 #[derive(Serialize)]
@@ -47,8 +47,8 @@ pub async fn check_liveness() -> Result<LiveStatus> {
     })
 }
 
-pub async fn check_readiness(config: &Config, db: Arc<DbMapper>) -> Result<HealthStatus> {
-    let checks = perform_checks(config, db).await?;
+pub async fn check_readiness(db: Arc<DbMapper>) -> Result<HealthStatus> {
+    let checks = perform_checks(db).await?;
     let mut status = "DOWN".to_string();
     let mut message = "One or more health checks are failing".to_string();
 
@@ -64,16 +64,14 @@ pub async fn check_readiness(config: &Config, db: Arc<DbMapper>) -> Result<Healt
     })
 }
 
-async fn perform_checks(config: &Config, db: Arc<DbMapper>) -> Result<HealthChecks> {
+async fn perform_checks(db: Arc<DbMapper>) -> Result<HealthChecks> {
     let mut checks = HealthChecks::new();
-
     checks.database = check_database(db).await?;
-
     Ok(checks)
 }
 
 async fn check_database(db: Arc<DbMapper>) -> Result<String> {
-    match db.buckets.test_read().await {
+    match db.vaults.test_read().await {
         Ok(_) => Ok("UP".to_string()),
         Err(e) => {
             let msg = format!("{}", e);

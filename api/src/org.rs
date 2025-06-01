@@ -1,10 +1,8 @@
-use snafu::ensure;
+use snafu::{OptionExt, ResultExt, ensure};
 use validator::Validate;
 
 use crate::Result;
-use crate::error::{
-    DbInteractSnafu, DbPoolSnafu, DbQuerySnafu, MaxorgsReachedSnafu, ValidationSnafu,
-};
+use crate::error::{DbSnafu, MaxOrgsReachedSnafu, ValidationSnafu};
 use crate::state::AppState;
 use db::org::{NewOrg, Org, UpdateOrg};
 use vault::validators::flatten_errors;
@@ -22,10 +20,10 @@ pub async fn create_org(state: &AppState, data: &NewOrg, admin: bool) -> Result<
     );
 
     // Limit the number of orgs because we are poor!
-    let count = state.db.orgs.count().await?;
-    ensure!(count < MAX_ORGS as i64, MaxorgsReachedSnafu,);
+    let count = state.db.orgs.count().await.context(DbSnafu)?;
+    ensure!(count < MAX_ORGS as i64, MaxOrgsReachedSnafu,);
 
-    state.db.orgs.create(data, admin).await
+    state.db.orgs.create(data, admin).await.context(DbSnafu)
 }
 
 pub async fn update_org(state: &AppState, id: &str, data: &UpdateOrg) -> Result<bool> {
@@ -37,25 +35,23 @@ pub async fn update_org(state: &AppState, id: &str, data: &UpdateOrg) -> Result<
         }
     );
 
-    state.db.orgs.update(id, data).await
+    state.db.orgs.update(id, data).await.context(DbSnafu)
 }
 
 pub async fn delete_org(state: &AppState, id: &str) -> Result<()> {
-    let Some(client) = state.db.orgs.get(id).await? else {
-        return ValidationSnafu {
-            msg: "Org not found".to_string(),
-        }
-        .fail();
-    };
+    let org = state.db.orgs.get(id).await.context(DbSnafu)?;
+    let org = org.context(ValidationSnafu {
+        msg: "Org not found".to_string(),
+    })?;
 
     ensure!(
-        !client.admin,
+        !org.admin,
         ValidationSnafu {
             msg: "Cannot delete admin org".to_string(),
         }
     );
 
-    let vault_count = state.db.vaults.count_by_org(id).await?;
+    let vault_count = state.db.vaults.count_by_org(id).await.context(DbSnafu)?;
     ensure!(
         vault_count == 0,
         ValidationSnafu {
@@ -63,7 +59,7 @@ pub async fn delete_org(state: &AppState, id: &str) -> Result<()> {
         }
     );
 
-    let users_count = state.db.users.count_by_org(id).await?;
+    let users_count = state.db.users.count_by_org(id).await.context(DbSnafu)?;
     ensure!(
         users_count == 0,
         ValidationSnafu {
@@ -71,5 +67,5 @@ pub async fn delete_org(state: &AppState, id: &str) -> Result<()> {
         }
     );
 
-    state.db.orgs.delete(id).await
+    state.db.orgs.delete(id).await.context(DbSnafu)
 }

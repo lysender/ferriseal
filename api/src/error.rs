@@ -137,6 +137,12 @@ pub enum Error {
     #[snafu(display("Requires authentication"))]
     RequiresAuth,
 
+    #[snafu(display("{}", source))]
+    Password {
+        source: password::Error,
+        backtrace: Backtrace,
+    },
+
     #[snafu(display("{}", msg))]
     HashPassword { msg: String },
 

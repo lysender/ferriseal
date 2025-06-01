@@ -110,7 +110,7 @@ pub async fn health_live_handler() -> Result<JsonResponse> {
 }
 
 pub async fn health_ready_handler(State(state): State<AppState>) -> Result<JsonResponse> {
-    let health = check_readiness(&state.config, state.db).await?;
+    let health = check_readiness(state.db).await?;
     let status = if health.is_healthy() {
         StatusCode::OK
     } else {

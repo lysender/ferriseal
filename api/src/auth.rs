@@ -1,3 +1,4 @@
+use snafu::ResultExt;
 use validator::Validate;
 
 use crate::token::{create_auth_token, verify_auth_token};
@@ -6,7 +7,8 @@ use password::verify_password;
 use snafu::{OptionExt, ensure};
 
 use crate::error::{
-    InactiveUserSnafu, InvalidClientSnafu, InvalidPasswordSnafu, UserNotFoundSnafu, ValidationSnafu,
+    DbSnafu, InactiveUserSnafu, InvalidClientSnafu, InvalidPasswordSnafu, PasswordSnafu,
+    UserNotFoundSnafu, ValidationSnafu,
 };
 use crate::{Result, state::AppState};
 use vault::validators::flatten_errors;
@@ -25,26 +27,27 @@ pub async fn authenticate(state: &AppState, credentials: &Credentials) -> Result
         .db
         .users
         .find_by_username(&credentials.username)
-        .await?;
+        .await
+        .context(DbSnafu)?;
+
     let user = user.context(InvalidPasswordSnafu)?;
 
     ensure!(&user.status == "active", InactiveUserSnafu);
 
-    // Validate client
-    let client = state.db.clients.get(&user.client_id).await?;
-    let client = client.context(InvalidClientSnafu)?;
-    ensure!(&client.status == "active", InvalidClientSnafu);
+    // Validate org
+    let org = state.db.orgs.get(&user.org_id).await.context(DbSnafu)?;
+    let org = org.context(InvalidClientSnafu)?;
 
     // Validate password
-    let _ = verify_password(&credentials.password, &user.password)?;
+    let _ = verify_password(&credentials.password, &user.password).context(PasswordSnafu)?;
 
     // Generate a token
     let actor = ActorPayload {
         id: user.id.clone(),
-        client_id: client.id.clone(),
-        default_bucket_id: client.default_bucket_id.clone(),
-        scope: "auth files".to_string(),
+        org_id: org.id.clone(),
+        scope: "auth vault".to_string(),
     };
+
     let token = create_auth_token(&actor, &state.config.jwt_secret)?;
     Ok(AuthResponse {
         user: user.into(),
@@ -55,14 +58,13 @@ pub async fn authenticate(state: &AppState, credentials: &Credentials) -> Result
 pub async fn authenticate_token(state: &AppState, token: &str) -> Result<Actor> {
     let actor = verify_auth_token(token, &state.config.jwt_secret)?;
 
-    // Validate client
-    let client = state.db.clients.get(&actor.client_id).await?;
-    let client = client.context(InvalidClientSnafu)?;
-    ensure!(&client.status == "active", InvalidClientSnafu);
+    // Validate org
+    let org = state.db.orgs.get(&actor.org_id).await.context(DbSnafu)?;
+    let org = org.context(InvalidClientSnafu)?;
 
-    let user = state.db.users.get(&actor.id).await?;
+    let user = state.db.users.get(&actor.id).await.context(DbSnafu)?;
     let user = user.context(UserNotFoundSnafu)?;
-    ensure!(&user.client_id == &client.id, UserNotFoundSnafu);
+    ensure!(&user.org_id == &org.id, UserNotFoundSnafu);
 
     Ok(Actor::new(actor, user.into()))
 }

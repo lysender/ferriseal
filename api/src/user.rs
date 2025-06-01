@@ -1,17 +1,12 @@
-use snafu::{OptionExt, ensure};
+use snafu::{OptionExt, ResultExt, ensure};
 use validator::Validate;
 
-use crate::error::{
-    DbInteractSnafu, DbPoolSnafu, DbQuerySnafu, InvalidRolesSnafu, MaxUsersReachedSnafu,
-    ValidationSnafu, WhateverSnafu,
-};
+use crate::error::{DbSnafu, PasswordSnafu, ValidationSnafu, WhateverSnafu};
 use crate::state::AppState;
 use crate::{Error, Result};
 use db::user::{ChangeCurrentPassword, UpdateUserPassword};
 use password::verify_password;
 use vault::validators::flatten_errors;
-
-const MAX_USERS_PER_CLIENT: i32 = 50;
 
 pub async fn change_current_password(
     state: &AppState,
@@ -26,16 +21,25 @@ pub async fn change_current_password(
         }
     );
 
-    let user = state.db.users.get(user_id).await?.context(WhateverSnafu {
+    let user = state.db.users.get(user_id).await.context(DbSnafu)?;
+    let user = user.context(WhateverSnafu {
         msg: "Unable to re-query user".to_string(),
     })?;
 
     // Validate current password
-    if let Err(verify_err) = verify_password(&data.current_password, &user.password) {
+    if let Err(verify_err) =
+        verify_password(&data.current_password, &user.password).context(PasswordSnafu)
+    {
         return match verify_err {
-            Error::InvalidPassword => Err(Error::Validation {
-                msg: "Current password is incorrect".to_string(),
-            }),
+            #[allow(unused_variables)]
+            Error::Password { source, backtrace } => match source {
+                password::Error::Incorrect => Err(Error::Validation {
+                    msg: "Current password is incorrect".to_string(),
+                }),
+                other => Err(Error::Whatever {
+                    msg: format!("{}", other),
+                }),
+            },
             _ => Err(verify_err),
         };
     }
@@ -44,5 +48,10 @@ pub async fn change_current_password(
         password: data.new_password.clone(),
     };
 
-    state.db.users.update_password(user_id, &new_data).await
+    state
+        .db
+        .users
+        .update_password(user_id, &new_data)
+        .await
+        .context(DbSnafu)
 }

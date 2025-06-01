@@ -3,7 +3,7 @@ use text_io::read;
 
 use crate::Result;
 use crate::config::Config;
-use crate::error::PasswordPromptSnafu;
+use crate::error::{DbSnafu, PasswordPromptSnafu};
 use crate::state::create_app_state;
 use db::org::NewOrg;
 use db::user::NewUser;
@@ -30,7 +30,7 @@ pub async fn run_setup(config: &Config) -> Result<()> {
     let state = create_app_state(config).await?;
 
     let org_id: String;
-    let admin_org = state.db.org.find_admin().await?;
+    let admin_org = state.db.orgs.find_admin().await.context(DbSnafu)?;
     if let Some(org) = admin_org {
         org_id = org.id;
     } else {
@@ -43,13 +43,19 @@ pub async fn run_setup(config: &Config) -> Result<()> {
         org_id = org.id;
     }
 
-    let users = state.db.users.list(&org_id).await?;
+    let users = state.db.users.list(&org_id).await.context(DbSnafu)?;
     if users.len() > 0 {
         println!("Admin user already exists.");
         return Ok(());
     }
 
-    let user = state.db.users.create(&org_id, &new_user, true).await?;
+    let user = state
+        .db
+        .users
+        .create(&org_id, &new_user, true)
+        .await
+        .context(DbSnafu)?;
+
     println!(
         "{{ id = {}, username = {} status = {} }}",
         user.id, user.username, user.status

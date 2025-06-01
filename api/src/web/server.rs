@@ -501,15 +501,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_list_user_entries_as_admin() {
+        // System Admins cannot view vault entries
         let server = create_test_app();
         let token = create_test_admin_auth_token().unwrap();
         let url = format!("/orgs/{}/vaults/{}/entries", TEST_ORG_ID, TEST_VAULT_ID,);
-        let listing: PaginatedDto<EntryDto> = server
+        let response = server
             .get(url.as_str())
             .authorization_bearer(token.as_str())
-            .await
-            .json();
+            .expect_failure()
+            .await;
 
-        assert_eq!(listing.meta.total_records, 0);
+        response.assert_status_forbidden();
     }
 }
