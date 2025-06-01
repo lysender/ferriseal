@@ -12,12 +12,7 @@ chrono.workspace = true
 clap.workspace = true
 deadpool-diesel.workspace = true
 diesel.workspace = true
-google-cloud-storage.workspace = true
-image.workspace = true
-infer.workspace = true
 jsonwebtoken.workspace = true
-kamadak-exif.workspace = true
-multer.workspace = true
 rpassword.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -32,3 +27,5 @@ tracing-subscriber.workspace = true
 validator.workspace = true
 dto = { path = "../dto" }
 vault = { path = "../vault" }
+db = { path = "../db" }
+password = { path = "../password" }
