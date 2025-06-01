@@ -22,16 +22,12 @@ pub async fn create_app_state(config: &Config) -> Result<AppState> {
 pub fn create_test_app_state() -> AppState {
     use std::path::PathBuf;
 
-    use crate::config::{CloudConfig, DbConfig, ServerConfig};
+    use crate::config::{DbConfig, ServerConfig};
     use db::db::create_test_db_mapper;
 
     let config = Config {
         jwt_secret: "0196d1dbbfd87819b9183f14ac3ed485".to_string(),
         upload_dir: PathBuf::new(),
-        cloud: CloudConfig {
-            project_id: "test-cloud-project-id".to_string(),
-            credentials: "test-credentials-file.json".to_string(),
-        },
         server: ServerConfig { port: 43700 },
         db: DbConfig {
             url: "-url".to_string(),
