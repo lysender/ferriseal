@@ -1,6 +1,0 @@
-CREATE TABLE orgs (
-    id CHAR(32) PRIMARY KEY NOT NULL,
-    name VARCHAR(50) NOT NULL,
-    admin INTEGER NOT NULL,
-    created_at BIGINT NOT NULL
-);
