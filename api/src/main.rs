@@ -11,6 +11,7 @@ mod command;
 mod config;
 mod db;
 mod dir;
+mod entry;
 mod error;
 mod file;
 mod health;
@@ -19,6 +20,7 @@ mod run;
 mod schema;
 mod state;
 mod storage;
+mod vault;
 mod web;
 
 // Re-export error types for convenience

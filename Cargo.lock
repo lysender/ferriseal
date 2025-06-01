@@ -125,12 +125,12 @@ dependencies = [
  "clap",
  "deadpool-diesel",
  "diesel",
+ "dto",
  "google-cloud-storage",
  "image",
  "infer",
  "jsonwebtoken",
  "kamadak-exif",
- "memo",
  "multer",
  "rpassword",
  "serde",
@@ -144,6 +144,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "validator",
+ "vault",
 ]
 
 [[package]]
@@ -839,6 +840,40 @@ dependencies = [
  "darling_core",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "db"
+version = "0.1.0"
+dependencies = [
+ "argon2",
+ "async-trait",
+ "axum",
+ "axum-test",
+ "chrono",
+ "clap",
+ "deadpool-diesel",
+ "diesel",
+ "dto",
+ "google-cloud-storage",
+ "image",
+ "infer",
+ "jsonwebtoken",
+ "kamadak-exif",
+ "multer",
+ "rpassword",
+ "serde",
+ "serde_json",
+ "snafu",
+ "text_io",
+ "tokio",
+ "toml",
+ "tower",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "validator",
+ "vault",
 ]
 
 [[package]]
