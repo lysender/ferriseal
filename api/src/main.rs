@@ -4,10 +4,9 @@ use run::run_command;
 use snafu::ErrorCompat;
 use std::process;
 
-mod authx;
+mod auth;
 mod command;
 mod config;
-mod entry;
 mod entry;
 mod error;
 mod health;

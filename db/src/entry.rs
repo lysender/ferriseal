@@ -11,7 +11,6 @@ use validator::Validate;
 use crate::Result;
 use crate::error::{DbInteractSnafu, DbPoolSnafu, DbQuerySnafu, ValidationSnafu};
 use crate::schema::entries::{self, dsl};
-use crate::vault::Vault;
 use dto::entry::EntryDto;
 use dto::pagination::PaginatedDto;
 use vault::validators::flatten_errors;
@@ -32,13 +31,25 @@ pub struct Entry {
     pub updated_at: i64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Validate, Serialize, Deserialize)]
 pub struct EntryPayload {
+    #[validate(length(min = 3, max = 250))]
     pub label: String,
     pub cipher_username: Option<String>,
     pub cipher_password: Option<String>,
     pub cipher_notes: Option<String>,
     pub cipher_extra_notes: Option<String>,
+}
+
+#[derive(Debug, Clone, AsChangeset)]
+#[diesel(table_name = crate::schema::entries)]
+pub struct UpdateEntry {
+    pub label: String,
+    pub cipher_username: Option<String>,
+    pub cipher_password: Option<String>,
+    pub cipher_notes: Option<String>,
+    pub cipher_extra_notes: Option<String>,
+    pub updated_at: i64,
 }
 
 #[derive(Debug, Clone, Deserialize, Validate)]
@@ -93,11 +104,14 @@ const MAX_PER_PAGE: i32 = 50;
 
 #[async_trait]
 pub trait EntryRepoable: Send + Sync {
-    async fn list(&self, vault: &Vault, params: &ListEntriesParams) -> Result<PaginatedDto<Entry>>;
+    async fn list(&self, vault_id: &str, params: &ListEntriesParams)
+    -> Result<PaginatedDto<Entry>>;
 
     async fn create(&self, entry_dto: EntryDto) -> Result<Entry>;
 
     async fn get(&self, id: &str) -> Result<Option<Entry>>;
+
+    async fn update(&self, id: &str, data: &EntryPayload) -> Result<bool>;
 
     async fn count_by_vault(&self, vault_id: &str) -> Result<i64>;
 
@@ -144,7 +158,11 @@ impl EntryRepo {
 
 #[async_trait]
 impl EntryRepoable for EntryRepo {
-    async fn list(&self, vault: &Vault, params: &ListEntriesParams) -> Result<PaginatedDto<Entry>> {
+    async fn list(
+        &self,
+        vault_id: &str,
+        params: &ListEntriesParams,
+    ) -> Result<PaginatedDto<Entry>> {
         let errors = params.validate();
         ensure!(
             errors.is_ok(),
@@ -155,9 +173,9 @@ impl EntryRepoable for EntryRepo {
 
         let db = self.db_pool.get().await.context(DbPoolSnafu)?;
 
-        let vid = vault.id.clone();
+        let vid = vault_id.to_string();
 
-        let total_records = self.listing_count(&vault.id, params).await?;
+        let total_records = self.listing_count(vault_id, params).await?;
         let mut page: i32 = 1;
         let mut per_page: i32 = MAX_PER_PAGE;
         let mut offset: i64 = 0;
@@ -257,6 +275,45 @@ impl EntryRepoable for EntryRepo {
         Ok(item)
     }
 
+    async fn update(&self, id: &str, data: &EntryPayload) -> Result<bool> {
+        let errors = data.validate();
+        ensure!(
+            errors.is_ok(),
+            ValidationSnafu {
+                msg: flatten_errors(&errors.unwrap_err()),
+            }
+        );
+
+        let today = chrono::Utc::now().timestamp();
+        let payload = UpdateEntry {
+            label: data.label.clone(),
+            cipher_username: data.cipher_username.clone(),
+            cipher_password: data.cipher_password.clone(),
+            cipher_notes: data.cipher_notes.clone(),
+            cipher_extra_notes: data.cipher_extra_notes.clone(),
+            updated_at: today,
+        };
+
+        let db = self.db_pool.get().await.context(DbPoolSnafu)?;
+
+        let id = id.to_string();
+        let update_res = db
+            .interact(move |conn| {
+                diesel::update(dsl::entries)
+                    .filter(dsl::id.eq(&id))
+                    .set(&payload)
+                    .execute(conn)
+            })
+            .await
+            .context(DbInteractSnafu)?;
+
+        let affected = update_res.context(DbQuerySnafu {
+            table: "entries".to_string(),
+        })?;
+
+        Ok(affected > 0)
+    }
+
     async fn count_by_vault(&self, vault_id: &str) -> Result<i64> {
         let db = self.db_pool.get().await.context(DbPoolSnafu)?;
 
@@ -305,7 +362,7 @@ pub struct EntryTestRepo {}
 impl EntryRepoable for EntryTestRepo {
     async fn list(
         &self,
-        _vault: &Vault,
+        _vault_id: &str,
         _params: &ListEntriesParams,
     ) -> Result<PaginatedDto<Entry>> {
         Ok(PaginatedDto::new(vec![], 1, 10, 0))
@@ -317,6 +374,10 @@ impl EntryRepoable for EntryTestRepo {
 
     async fn get(&self, _id: &str) -> Result<Option<Entry>> {
         Ok(None)
+    }
+
+    async fn update(&self, _id: &str, _data: &EntryPayload) -> Result<bool> {
+        Ok(true)
     }
 
     async fn count_by_vault(&self, _dir_id: &str) -> Result<i64> {

@@ -5,16 +5,14 @@ use axum::{
 
 use super::{
     handler::{
-        authenticate_handler, change_password_handler, create_bucket_handler,
-        create_client_handler, create_dir_handler, create_file_handler, create_user_handler,
-        delete_bucket_handler, delete_client_handler, delete_dir_handler, delete_file_handler,
-        delete_user_handler, get_bucket_handler, get_client_handler, get_dir_handler,
-        get_file_handler, get_user_handler, health_live_handler, health_ready_handler,
-        home_handler, list_buckets_handler, list_clients_handler, list_dirs_handler,
-        list_files_handler, list_users_handler, not_found_handler, profile_handler,
-        reset_user_password_handler, update_client_handler, update_default_bucket_handler,
-        update_dir_handler, update_user_roles_handler, update_user_status_handler,
-        user_authz_handler, user_permissions_handler,
+        authenticate_handler, change_password_handler, create_entry_handler, create_org_handler,
+        create_user_handler, create_vault_handler, delete_entry_handler, delete_org_handler,
+        delete_user_handler, delete_vault_handler, get_entry_handler, get_org_handler,
+        get_user_handler, get_vault_handler, health_live_handler, health_ready_handler,
+        home_handler, list_entries_handler, list_orgs_handler, list_users_handler,
+        list_vaults_handler, not_found_handler, profile_handler, reset_user_password_handler,
+        update_entry_handler, update_org_handler, update_user_roles_handler,
+        update_user_status_handler, user_authz_handler, user_permissions_handler,
     },
     middleware::{
         auth_middleware, entry_middleware, org_middleware, require_auth_middleware,
@@ -57,7 +55,7 @@ fn private_routes(state: AppState) -> Router<AppState> {
 
 fn orgss_routes(state: AppState) -> Router<AppState> {
     Router::new()
-        .route("/", get(list_clients_handler).post(create_client_handler))
+        .route("/", get(list_orgs_handler).post(create_org_handler))
         .nest("/{org_id}", inner_org_routes(state.clone()))
         .with_state(state)
 }
@@ -75,9 +73,9 @@ fn inner_org_routes(state: AppState) -> Router<AppState> {
     Router::new()
         .route(
             "/",
-            get(get_client_handler)
-                .patch(update_client_handler)
-                .delete(delete_client_handler),
+            get(get_org_handler)
+                .patch(update_org_handler)
+                .delete(delete_org_handler),
         )
         .nest("/users", org_users_routes(state.clone()))
         .nest("/vaults", org_vaults_routes(state.clone()))
@@ -100,7 +98,7 @@ fn inner_user_routes(state: AppState) -> Router<AppState> {
         .route(
             "/",
             get(get_user_handler)
-                .patch(delete_bucket_handler)
+                .patch(delete_vault_handler)
                 .delete(delete_user_handler),
         )
         .route("/update_status", post(update_user_status_handler))
@@ -115,14 +113,14 @@ fn inner_user_routes(state: AppState) -> Router<AppState> {
 
 fn org_vaults_routes(state: AppState) -> Router<AppState> {
     Router::new()
-        .route("/", get(list_buckets_handler).post(create_bucket_handler))
+        .route("/", get(list_vaults_handler).post(create_vault_handler))
         .nest("/{vault_id}", inner_vault_routes(state.clone()))
         .with_state(state)
 }
 
 fn inner_vault_routes(state: AppState) -> Router<AppState> {
     Router::new()
-        .route("/", get(get_bucket_handler).delete(delete_bucket_handler))
+        .route("/", get(get_vault_handler).delete(delete_vault_handler))
         .nest("/entries", entry_routes(state.clone()))
         .layer(middleware::from_fn_with_state(
             state.clone(),
@@ -133,7 +131,7 @@ fn inner_vault_routes(state: AppState) -> Router<AppState> {
 
 fn entry_routes(state: AppState) -> Router<AppState> {
     Router::new()
-        .route("/", get(list_dirs_handler).post(create_dir_handler))
+        .route("/", get(list_entries_handler).post(create_entry_handler))
         .nest("/{entry_id}", inner_entry_routes(state.clone()))
         .with_state(state)
 }
@@ -142,9 +140,9 @@ fn inner_entry_routes(state: AppState) -> Router<AppState> {
     Router::new()
         .route(
             "/",
-            get(get_dir_handler)
-                .patch(update_dir_handler)
-                .delete(delete_dir_handler),
+            get(get_entry_handler)
+                .patch(update_entry_handler)
+                .delete(delete_entry_handler),
         )
         .layer(middleware::from_fn_with_state(
             state.clone(),

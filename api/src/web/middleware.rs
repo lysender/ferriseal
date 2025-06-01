@@ -10,14 +10,14 @@ use snafu::{OptionExt, ResultExt, ensure};
 
 use crate::{
     Result,
-    authx::authenticate_token,
+    auth::authenticate_token,
     error::{
         BadRequestSnafu, DbSnafu, ForbiddenSnafu, InsufficientAuthScopeSnafu,
         InvalidAuthTokenSnafu, NotFoundSnafu,
     },
     state::AppState,
 };
-use dto::{actor::Actor, role::Permission, user::UserDto};
+use dto::{actor::Actor, entry::EntryDto, role::Permission, user::UserDto};
 use vault::utils::valid_id;
 
 use super::params::{EntryParams, OrgParams, UserParams, VaultParams};
@@ -240,8 +240,10 @@ pub async fn entry_middleware(
         }
     );
 
+    let dto: EntryDto = entry.into();
+
     // Forward to the next middleware/handler passing the entry information
-    request.extensions_mut().insert(entry);
+    request.extensions_mut().insert(dto);
     let response = next.run(request).await;
     Ok(response)
 }
