@@ -3,23 +3,23 @@ use deadpool_diesel::sqlite::Pool;
 use diesel::dsl::count_star;
 use diesel::prelude::*;
 use diesel::{QueryDsl, SelectableHelper};
-use memo::client::ClientDto;
+use memo::client::OrgDto;
 use serde::Deserialize;
 use snafu::{ResultExt, ensure};
 use validator::Validate;
 
 use crate::Result;
 use crate::error::{
-    DbInteractSnafu, DbPoolSnafu, DbQuerySnafu, MaxClientsReachedSnafu, ValidationSnafu,
+    DbInteractSnafu, DbPoolSnafu, DbQuerySnafu, MaxorgsReachedSnafu, ValidationSnafu,
 };
-use crate::schema::clients::{self, dsl};
+use crate::schema::orgs::{self, dsl};
 use crate::state::AppState;
 use memo::{utils::generate_id, validators::flatten_errors};
 
 #[derive(Debug, Clone, Queryable, Selectable, Insertable)]
-#[diesel(table_name = crate::schema::clients)]
+#[diesel(table_name = crate::schema::orgs)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
-pub struct Client {
+pub struct Org {
     pub id: String,
     pub name: String,
     pub default_bucket_id: Option<String>,
@@ -29,7 +29,7 @@ pub struct Client {
 }
 
 #[derive(Debug, Clone, Deserialize, Validate)]
-pub struct NewClient {
+pub struct NewOrg {
     #[validate(length(min = 1, max = 50))]
     #[validate(custom(function = "memo::validators::anyname"))]
     pub name: String,
@@ -44,8 +44,8 @@ pub struct NewClient {
 }
 
 #[derive(Debug, Clone, Deserialize, Validate, AsChangeset)]
-#[diesel(table_name = crate::schema::clients)]
-pub struct UpdateClient {
+#[diesel(table_name = crate::schema::orgs)]
+pub struct UpdateOrg {
     #[validate(length(min = 1, max = 50))]
     #[validate(custom(function = "memo::validators::anyname"))]
     pub name: Option<String>,
@@ -60,22 +60,22 @@ pub struct UpdateClient {
 }
 
 #[derive(Debug, Clone, Deserialize, Validate)]
-pub struct ClientDefaultBucket {
+pub struct OrgDefaultBucket {
     #[validate(length(min = 1, max = 50))]
     #[validate(custom(function = "memo::validators::uuid"))]
     pub default_bucket_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, AsChangeset)]
-#[diesel(table_name = crate::schema::clients)]
-pub struct UpdateClientBucket {
+#[diesel(table_name = crate::schema::orgs)]
+pub struct UpdateOrgBucket {
     #[diesel(treat_none_as_null = true)]
     pub default_bucket_id: Option<String>,
 }
 
-impl From<ClientDto> for Client {
-    fn from(dto: ClientDto) -> Self {
-        Client {
+impl From<OrgDto> for Org {
+    fn from(dto: OrgDto) -> Self {
+        Org {
             id: dto.id,
             name: dto.name,
             default_bucket_id: dto.default_bucket_id,
@@ -86,9 +86,9 @@ impl From<ClientDto> for Client {
     }
 }
 
-impl From<Client> for ClientDto {
-    fn from(client: Client) -> Self {
-        ClientDto {
+impl From<Org> for OrgDto {
+    fn from(client: Org) -> Self {
+        OrgDto {
             id: client.id,
             name: client.name,
             default_bucket_id: client.default_bucket_id,
@@ -102,10 +102,10 @@ impl From<Client> for ClientDto {
     }
 }
 
-// Can't have too many clients
-const MAX_CLIENTS: i32 = 10;
+// Can't have too many orgs
+const MAX_orgs: i32 = 10;
 
-pub async fn create_client(state: &AppState, data: &NewClient, admin: bool) -> Result<Client> {
+pub async fn create_client(state: &AppState, data: &NewOrg, admin: bool) -> Result<Org> {
     let valid_res = data.validate();
     ensure!(
         valid_res.is_ok(),
@@ -114,14 +114,14 @@ pub async fn create_client(state: &AppState, data: &NewClient, admin: bool) -> R
         }
     );
 
-    // Limit the number of clients because we are poor!
-    let count = state.db.clients.count().await?;
-    ensure!(count < MAX_CLIENTS as i64, MaxClientsReachedSnafu,);
+    // Limit the number of orgs because we are poor!
+    let count = state.db.orgs.count().await?;
+    ensure!(count < MAX_orgs as i64, MaxorgsReachedSnafu,);
 
-    state.db.clients.create(data, admin).await
+    state.db.orgs.create(data, admin).await
 }
 
-pub async fn update_client(state: &AppState, id: &str, data: &UpdateClient) -> Result<bool> {
+pub async fn update_client(state: &AppState, id: &str, data: &UpdateOrg) -> Result<bool> {
     let valid_res = data.validate();
     ensure!(
         valid_res.is_ok(),
@@ -144,13 +144,13 @@ pub async fn update_client(state: &AppState, id: &str, data: &UpdateClient) -> R
         }
     }
 
-    state.db.clients.update(id, data).await
+    state.db.orgs.update(id, data).await
 }
 
 pub async fn delete_client(state: &AppState, id: &str) -> Result<()> {
-    let Some(client) = state.db.clients.get(id).await? else {
+    let Some(client) = state.db.orgs.get(id).await? else {
         return ValidationSnafu {
-            msg: "Client not found".to_string(),
+            msg: "Org not found".to_string(),
         }
         .fail();
     };
@@ -166,7 +166,7 @@ pub async fn delete_client(state: &AppState, id: &str) -> Result<()> {
     ensure!(
         bucket_count == 0,
         ValidationSnafu {
-            msg: "Client still has buckets".to_string(),
+            msg: "Org still has buckets".to_string(),
         }
     );
 
@@ -174,106 +174,106 @@ pub async fn delete_client(state: &AppState, id: &str) -> Result<()> {
     ensure!(
         users_count == 0,
         ValidationSnafu {
-            msg: "Client still has users".to_string(),
+            msg: "Org still has users".to_string(),
         }
     );
 
-    state.db.clients.delete(id).await
+    state.db.orgs.delete(id).await
 }
 
 #[async_trait]
-pub trait ClientRepoable: Send + Sync {
-    async fn list(&self, client_id: Option<String>) -> Result<Vec<Client>>;
+pub trait OrgRepoable: Send + Sync {
+    async fn list(&self, client_id: Option<String>) -> Result<Vec<Org>>;
 
-    async fn find_admin(&self) -> Result<Option<Client>>;
+    async fn find_admin(&self) -> Result<Option<Org>>;
 
-    async fn create(&self, data: &NewClient, admin: bool) -> Result<Client>;
+    async fn create(&self, data: &NewOrg, admin: bool) -> Result<Org>;
 
-    async fn get(&self, id: &str) -> Result<Option<ClientDto>>;
+    async fn get(&self, id: &str) -> Result<Option<OrgDto>>;
 
-    async fn update(&self, id: &str, data: &UpdateClient) -> Result<bool>;
+    async fn update(&self, id: &str, data: &UpdateOrg) -> Result<bool>;
 
-    async fn find_by_name(&self, name: &str) -> Result<Option<ClientDto>>;
+    async fn find_by_name(&self, name: &str) -> Result<Option<OrgDto>>;
 
     async fn count(&self) -> Result<i64>;
 
     async fn delete(&self, id: &str) -> Result<()>;
 }
 
-pub struct ClientRepo {
+pub struct OrgRepo {
     db_pool: Pool,
 }
 
-impl ClientRepo {
+impl OrgRepo {
     pub fn new(db_pool: Pool) -> Self {
         Self { db_pool }
     }
 }
 
 #[async_trait]
-impl ClientRepoable for ClientRepo {
-    async fn list(&self, client_id: Option<String>) -> Result<Vec<Client>> {
+impl OrgRepoable for OrgRepo {
+    async fn list(&self, client_id: Option<String>) -> Result<Vec<Org>> {
         let db = self.db_pool.get().await.context(DbPoolSnafu)?;
 
         let client_id_copy = client_id.clone();
         let select_res = db
             .interact(move |conn| {
-                let mut query = dsl::clients.into_boxed();
+                let mut query = dsl::orgs.into_boxed();
                 if let Some(cid) = client_id_copy {
                     query = query.filter(dsl::id.eq(cid));
                 }
 
                 query
-                    .select(Client::as_select())
+                    .select(Org::as_select())
                     .order(dsl::name.asc())
-                    .load::<Client>(conn)
+                    .load::<Org>(conn)
             })
             .await
             .context(DbInteractSnafu)?;
 
         let items = select_res.context(DbQuerySnafu {
-            table: "clients".to_string(),
+            table: "orgs".to_string(),
         })?;
 
         Ok(items)
     }
 
-    async fn find_admin(&self) -> Result<Option<Client>> {
+    async fn find_admin(&self) -> Result<Option<Org>> {
         let db = self.db_pool.get().await.context(DbPoolSnafu)?;
 
         let select_res = db
             .interact(move |conn| {
-                dsl::clients
+                dsl::orgs
                     .filter(dsl::admin.eq(Some(1)))
-                    .select(Client::as_select())
-                    .first::<Client>(conn)
+                    .select(Org::as_select())
+                    .first::<Org>(conn)
                     .optional()
             })
             .await
             .context(DbInteractSnafu)?;
 
         let item = select_res.context(DbQuerySnafu {
-            table: "clients".to_string(),
+            table: "orgs".to_string(),
         })?;
 
         Ok(item)
     }
 
-    async fn create(&self, data: &NewClient, admin: bool) -> Result<Client> {
+    async fn create(&self, data: &NewOrg, admin: bool) -> Result<Org> {
         let db = self.db_pool.get().await.context(DbPoolSnafu)?;
 
-        // Client name must be unique
+        // Org name must be unique
         let existing = self.find_by_name(&data.name).await?;
         ensure!(
             existing.is_none(),
             ValidationSnafu {
-                msg: "Client name already exists".to_string(),
+                msg: "Org name already exists".to_string(),
             }
         );
 
         let today = chrono::Utc::now().timestamp();
         let admin = if admin { Some(1) } else { Some(0) };
-        let client = Client {
+        let client = Org {
             id: generate_id(),
             name: data.name.clone(),
             default_bucket_id: data.default_bucket_id.clone(),
@@ -285,7 +285,7 @@ impl ClientRepoable for ClientRepo {
         let client_copy = client.clone();
         let insert_res = db
             .interact(move |conn| {
-                diesel::insert_into(clients::table)
+                diesel::insert_into(orgs::table)
                     .values(&client_copy)
                     .execute(conn)
             })
@@ -293,44 +293,44 @@ impl ClientRepoable for ClientRepo {
             .context(DbInteractSnafu)?;
 
         let _ = insert_res.context(DbQuerySnafu {
-            table: "clients".to_string(),
+            table: "orgs".to_string(),
         })?;
 
         Ok(client)
     }
 
-    async fn get(&self, id: &str) -> Result<Option<ClientDto>> {
+    async fn get(&self, id: &str) -> Result<Option<OrgDto>> {
         let db = self.db_pool.get().await.context(DbPoolSnafu)?;
 
         let cid = id.to_string();
         let select_res = db
             .interact(move |conn| {
-                dsl::clients
+                dsl::orgs
                     .find(cid)
-                    .select(Client::as_select())
-                    .first::<Client>(conn)
+                    .select(Org::as_select())
+                    .first::<Org>(conn)
                     .optional()
             })
             .await
             .context(DbInteractSnafu)?;
 
         let item = select_res.context(DbQuerySnafu {
-            table: "clients".to_string(),
+            table: "orgs".to_string(),
         })?;
 
         Ok(item.map(|item| item.into()))
     }
 
-    async fn update(&self, id: &str, data: &UpdateClient) -> Result<bool> {
+    async fn update(&self, id: &str, data: &UpdateOrg) -> Result<bool> {
         let db = self.db_pool.get().await.context(DbPoolSnafu)?;
 
-        // Client name must be unique
+        // Org name must be unique
         if let Some(name) = data.name.clone() {
             if let Some(existing) = self.find_by_name(&name).await? {
                 ensure!(
                     &existing.id == id,
                     ValidationSnafu {
-                        msg: "Client name already exists".to_string(),
+                        msg: "Org name already exists".to_string(),
                     }
                 );
             }
@@ -340,7 +340,7 @@ impl ClientRepoable for ClientRepo {
         let data_copy = data.clone();
         let update_res = db
             .interact(move |conn| {
-                diesel::update(dsl::clients)
+                diesel::update(dsl::orgs)
                     .filter(dsl::id.eq(id.as_str()))
                     .set(data_copy)
                     .execute(conn)
@@ -349,29 +349,29 @@ impl ClientRepoable for ClientRepo {
             .context(DbInteractSnafu)?;
 
         let item = update_res.context(DbQuerySnafu {
-            table: "clients".to_string(),
+            table: "orgs".to_string(),
         })?;
 
         Ok(item > 0)
     }
 
-    async fn find_by_name(&self, name: &str) -> Result<Option<ClientDto>> {
+    async fn find_by_name(&self, name: &str) -> Result<Option<OrgDto>> {
         let db = self.db_pool.get().await.context(DbPoolSnafu)?;
 
         let name_copy = name.to_string();
         let select_res = db
             .interact(move |conn| {
-                dsl::clients
+                dsl::orgs
                     .filter(dsl::name.eq(name_copy.as_str()))
-                    .select(Client::as_select())
-                    .first::<Client>(conn)
+                    .select(Org::as_select())
+                    .first::<Org>(conn)
                     .optional()
             })
             .await
             .context(DbInteractSnafu)?;
 
         let item = select_res.context(DbQuerySnafu {
-            table: "clients".to_string(),
+            table: "orgs".to_string(),
         })?;
 
         Ok(item.map(|item| item.into()))
@@ -381,12 +381,12 @@ impl ClientRepoable for ClientRepo {
         let db = self.db_pool.get().await.context(DbPoolSnafu)?;
 
         let count_res = db
-            .interact(move |conn| dsl::clients.select(count_star()).get_result::<i64>(conn))
+            .interact(move |conn| dsl::orgs.select(count_star()).get_result::<i64>(conn))
             .await
             .context(DbInteractSnafu)?;
 
         let count = count_res.context(DbQuerySnafu {
-            table: "clients".to_string(),
+            table: "orgs".to_string(),
         })?;
 
         Ok(count)
@@ -398,13 +398,13 @@ impl ClientRepoable for ClientRepo {
         let id = id.to_string();
         let delete_res = db
             .interact(move |conn| {
-                diesel::delete(dsl::clients.filter(dsl::id.eq(id.as_str()))).execute(conn)
+                diesel::delete(dsl::orgs.filter(dsl::id.eq(id.as_str()))).execute(conn)
             })
             .await
             .context(DbInteractSnafu)?;
 
         let _ = delete_res.context(DbQuerySnafu {
-            table: "clients".to_string(),
+            table: "orgs".to_string(),
         })?;
 
         Ok(())
@@ -421,14 +421,14 @@ pub const TEST_ADMIN_CLIENT_ID: &'static str = "0196d1a2784a72959c97eef5dbc69dc7
 pub const TEST_NEW_CLIENT_ID: &'static str = "0196d1a2784a72959c97eef5dbc69dc7";
 
 #[cfg(test)]
-pub struct ClientTestRepo {}
+pub struct OrgTestRepo {}
 
 #[cfg(test)]
-pub fn create_test_client() -> Client {
+pub fn create_test_client() -> Org {
     let today = chrono::Utc::now().timestamp();
-    Client {
+    Org {
         id: TEST_CLIENT_ID.to_string(),
-        name: "Test Client".to_string(),
+        name: "Test Org".to_string(),
         default_bucket_id: None,
         status: "active".to_string(),
         admin: None,
@@ -437,11 +437,11 @@ pub fn create_test_client() -> Client {
 }
 
 #[cfg(test)]
-pub fn create_test_admin_client() -> Client {
+pub fn create_test_admin_client() -> Org {
     let today = chrono::Utc::now().timestamp();
-    Client {
+    Org {
         id: TEST_ADMIN_CLIENT_ID.to_string(),
-        name: "Test Admin Client".to_string(),
+        name: "Test Admin Org".to_string(),
         default_bucket_id: None,
         status: "active".to_string(),
         admin: Some(1),
@@ -450,11 +450,11 @@ pub fn create_test_admin_client() -> Client {
 }
 
 #[cfg(test)]
-pub fn create_test_new_client() -> Client {
+pub fn create_test_new_client() -> Org {
     let today = chrono::Utc::now().timestamp();
-    Client {
+    Org {
         id: TEST_NEW_CLIENT_ID.to_string(),
-        name: "Test New Client".to_string(),
+        name: "Test New Org".to_string(),
         default_bucket_id: None,
         status: "active".to_string(),
         admin: None,
@@ -464,44 +464,42 @@ pub fn create_test_new_client() -> Client {
 
 #[cfg(test)]
 #[async_trait]
-impl ClientRepoable for ClientTestRepo {
-    async fn list(&self, client_id: Option<String>) -> Result<Vec<Client>> {
+impl OrgRepoable for OrgTestRepo {
+    async fn list(&self, client_id: Option<String>) -> Result<Vec<Org>> {
         let client1 = create_test_client();
         let client2 = create_test_admin_client();
-        let clients = vec![client1, client2];
+        let orgs = vec![client1, client2];
         match client_id {
             Some(cid) => {
-                let filtered: Vec<Client> = clients
-                    .into_iter()
-                    .filter(|x| x.id.as_str() == cid)
-                    .collect();
+                let filtered: Vec<Org> =
+                    orgs.into_iter().filter(|x| x.id.as_str() == cid).collect();
                 Ok(filtered)
             }
-            None => Ok(clients),
+            None => Ok(orgs),
         }
     }
 
-    async fn find_admin(&self) -> Result<Option<Client>> {
+    async fn find_admin(&self) -> Result<Option<Org>> {
         Ok(Some(create_test_admin_client()))
     }
 
-    async fn create(&self, _data: &NewClient, _admin: bool) -> Result<Client> {
+    async fn create(&self, _data: &NewOrg, _admin: bool) -> Result<Org> {
         Ok(create_test_new_client())
     }
 
-    async fn get(&self, id: &str) -> Result<Option<ClientDto>> {
-        let clients = self.list(None).await?;
-        let found = clients.into_iter().find(|x| x.id.as_str() == id);
+    async fn get(&self, id: &str) -> Result<Option<OrgDto>> {
+        let orgs = self.list(None).await?;
+        let found = orgs.into_iter().find(|x| x.id.as_str() == id);
         Ok(found.map(|x| x.into()))
     }
 
-    async fn update(&self, _id: &str, _data: &UpdateClient) -> Result<bool> {
+    async fn update(&self, _id: &str, _data: &UpdateOrg) -> Result<bool> {
         Ok(true)
     }
 
-    async fn find_by_name(&self, name: &str) -> Result<Option<ClientDto>> {
-        let clients = self.list(None).await?;
-        let found = clients.into_iter().find(|x| x.name.as_str() == name);
+    async fn find_by_name(&self, name: &str) -> Result<Option<OrgDto>> {
+        let orgs = self.list(None).await?;
+        let found = orgs.into_iter().find(|x| x.name.as_str() == name);
         Ok(found.map(|x| x.into()))
     }
 

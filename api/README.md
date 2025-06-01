@@ -125,7 +125,7 @@ Entry:
 - username
 - password
 - notes
-- extra_nodes
+- extra_notes
 - status
 - created_at
 - updated_at
