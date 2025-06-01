@@ -10,7 +10,7 @@ use snafu::{OptionExt, ensure};
 
 use crate::{
     Result,
-    auth::authenticate_token,
+    authx::authenticate_token,
     error::{
         BadRequestSnafu, ForbiddenSnafu, InsufficientAuthScopeSnafu, InvalidAuthTokenSnafu,
         NotFoundSnafu,

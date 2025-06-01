@@ -4,7 +4,7 @@ use run::run_command;
 use snafu::ErrorCompat;
 use std::process;
 
-mod auth;
+mod authx;
 mod command;
 mod config;
 mod entry;
