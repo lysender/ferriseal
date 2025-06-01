@@ -10,15 +10,8 @@ use crate::error::{ConfigFileSnafu, ConfigParseSnafu, ConfigSnafu, UploadDirSnaf
 pub struct Config {
     pub jwt_secret: String,
     pub upload_dir: PathBuf,
-    pub cloud: CloudConfig,
     pub server: ServerConfig,
     pub db: DbConfig,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct CloudConfig {
-    pub project_id: String,
-    pub credentials: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -41,20 +34,6 @@ impl Config {
             config.jwt_secret.len() > 0,
             ConfigSnafu {
                 msg: "Jwt secret is required.".to_string()
-            }
-        );
-
-        ensure!(
-            config.cloud.project_id.len() > 0,
-            ConfigSnafu {
-                msg: "Google Cloud Project ID is required.".to_string()
-            }
-        );
-
-        ensure!(
-            config.cloud.credentials.len() > 0,
-            ConfigSnafu {
-                msg: "Google Cloud credentials file is required.".to_string()
             }
         );
 
