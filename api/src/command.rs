@@ -2,13 +2,13 @@ use snafu::ResultExt;
 use text_io::read;
 
 use crate::Result;
-use crate::client::NewClient;
 use crate::config::Config;
 use crate::error::PasswordPromptSnafu;
 use crate::state::create_app_state;
+use db::org::NewOrg;
+use db::user::NewUser;
 
-use crate::auth::user::NewUser;
-use crate::client::create_client;
+use crate::org::create_org;
 
 pub async fn run_setup(config: &Config) -> Result<()> {
     print!("Enter username for the admin user: ");
@@ -29,29 +29,27 @@ pub async fn run_setup(config: &Config) -> Result<()> {
 
     let state = create_app_state(config).await?;
 
-    let client_id: String;
-    let admin_client = state.db.clients.find_admin().await?;
-    if let Some(client) = admin_client {
-        client_id = client.id;
+    let org_id: String;
+    let admin_org = state.db.org.find_admin().await?;
+    if let Some(org) = admin_org {
+        org_id = org.id;
     } else {
-        let new_client = NewClient {
+        let new_org = NewOrg {
             name: "system-admin".to_string(),
-            status: "active".to_string(),
-            default_bucket_id: None,
         };
-        let client = create_client(&state, &new_client, true).await?;
-        println!("{{ id = {}, name = {} }}", client.id, client.name);
+        let org = create_org(&state, &new_org, true).await?;
+        println!("{{ id = {}, name = {} }}", org.id, org.name);
         println!("Created system admin client.");
-        client_id = client.id;
+        org_id = org.id;
     }
 
-    let users = state.db.users.list(&client_id).await?;
+    let users = state.db.users.list(&org_id).await?;
     if users.len() > 0 {
         println!("Admin user already exists.");
         return Ok(());
     }
 
-    let user = state.db.users.create(&client_id, &new_user, true).await?;
+    let user = state.db.users.create(&org_id, &new_user, true).await?;
     println!(
         "{{ id = {}, username = {} status = {} }}",
         user.id, user.username, user.status

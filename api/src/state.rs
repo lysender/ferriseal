@@ -1,27 +1,19 @@
 use axum::extract::FromRef;
 use std::sync::Arc;
 
-use crate::{
-    Result,
-    config::Config,
-    storage::{CloudStorable, StorageClient},
-};
-
+use crate::{Result, config::Config};
 use db::db::{DbMapper, create_db_mapper};
 
 #[derive(Clone, FromRef)]
 pub struct AppState {
     pub config: Config,
-    pub storage_client: Arc<dyn CloudStorable>,
     pub db: Arc<DbMapper>,
 }
 
 pub async fn create_app_state(config: &Config) -> Result<AppState> {
-    let storage_client = StorageClient::new(config.cloud.credentials.as_str()).await?;
     let db = create_db_mapper(config.db.url.as_str());
     Ok(AppState {
         config: config.clone(),
-        storage_client: Arc::new(storage_client),
         db: Arc::new(db),
     })
 }
@@ -31,7 +23,6 @@ pub fn create_test_app_state() -> AppState {
     use std::path::PathBuf;
 
     use crate::config::{CloudConfig, DbConfig, ServerConfig};
-    use crate::storage::StorageTestClient;
     use db::db::create_test_db_mapper;
 
     let config = Config {
@@ -47,12 +38,10 @@ pub fn create_test_app_state() -> AppState {
         },
     };
 
-    let storage_client = StorageTestClient::new();
     let db = create_test_db_mapper();
 
     AppState {
         config,
-        storage_client: Arc::new(storage_client),
         db: Arc::new(db),
     }
 }

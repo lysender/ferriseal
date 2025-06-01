@@ -36,7 +36,7 @@ impl HealthChecks {
     }
 
     pub fn is_healthy(&self) -> bool {
-        self.cloud_storage == "UP" && self.database == "UP"
+        self.database == "UP"
     }
 }
 

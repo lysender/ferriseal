@@ -81,9 +81,7 @@ pub trait VaultRepoable: Send + Sync {
 
     async fn get(&self, id: &str) -> Result<Option<VaultDto>>;
 
-    async fn find_by_name(&self, org_id: &str, name: &str) -> Result<Option<VaultDto>>;
-
-    async fn count_by_client(&self, org_id: &str) -> Result<i64>;
+    async fn count_by_org(&self, org_id: &str) -> Result<i64>;
 
     async fn delete(&self, id: &str) -> Result<()>;
 
@@ -177,31 +175,7 @@ impl VaultRepoable for VaultRepo {
         Ok(item.map(|item| item.into()))
     }
 
-    async fn find_by_name(&self, org_id: &str, name: &str) -> Result<Option<VaultDto>> {
-        let db = self.db_pool.get().await.context(DbPoolSnafu)?;
-
-        let cid = org_id.to_string();
-        let name_copy = name.to_string();
-        let select_res = db
-            .interact(move |conn| {
-                dsl::vaults
-                    .filter(dsl::org_id.eq(cid.as_str()))
-                    .filter(dsl::name.eq(name_copy.as_str()))
-                    .select(Vault::as_select())
-                    .first::<Vault>(conn)
-                    .optional()
-            })
-            .await
-            .context(DbInteractSnafu)?;
-
-        let item = select_res.context(DbQuerySnafu {
-            table: "vaults".to_string(),
-        })?;
-
-        Ok(item.map(|item| item.into()))
-    }
-
-    async fn count_by_client(&self, org_id: &str) -> Result<i64> {
+    async fn count_by_org(&self, org_id: &str) -> Result<i64> {
         let db = self.db_pool.get().await.context(DbPoolSnafu)?;
 
         let cid = org_id.to_string();
@@ -306,13 +280,7 @@ impl VaultRepoable for VaultTestRepo {
         Ok(found)
     }
 
-    async fn find_by_name(&self, org_id: &str, name: &str) -> Result<Option<VaultDto>> {
-        let vaults = self.list(org_id).await?;
-        let found = vaults.into_iter().find(|x| x.name.as_str() == name);
-        Ok(found)
-    }
-
-    async fn count_by_client(&self, org_id: &str) -> Result<i64> {
+    async fn count_by_org(&self, org_id: &str) -> Result<i64> {
         let vaults = self.list(org_id).await?;
         Ok(vaults.len() as i64)
     }

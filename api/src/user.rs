@@ -1,4 +1,4 @@
-use snafu::{OptionExt, ResultExt, ensure};
+use snafu::{OptionExt, ensure};
 use validator::Validate;
 
 use crate::error::{
