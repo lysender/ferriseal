@@ -7,7 +7,7 @@ use crate::{
     bucket::{BucketRepo, BucketRepoable},
     client::{ClientRepo, ClientRepoable},
     dir::{DirRepo, DirRepoable},
-    file::{FileRepo, FileRepoable},
+    entry::{FileRepo, FileRepoable},
 };
 
 pub fn create_db_pool(database_url: &str) -> Pool {
@@ -40,7 +40,7 @@ pub fn create_test_db_mapper() -> DbMapper {
     use crate::bucket::BucketTestRepo;
     use crate::client::ClientTestRepo;
     use crate::dir::DirTestRepo;
-    use crate::file::FileTestRepo;
+    use crate::entry::FileTestRepo;
 
     DbMapper {
         buckets: Arc::new(BucketTestRepo {}),
