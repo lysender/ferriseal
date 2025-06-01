@@ -3,18 +3,15 @@ use deadpool_diesel::sqlite::Pool;
 use diesel::dsl::count_star;
 use diesel::prelude::*;
 use diesel::{QueryDsl, SelectableHelper};
-use memo::client::OrgDto;
+use dto::org::OrgDto;
 use serde::Deserialize;
 use snafu::{ResultExt, ensure};
 use validator::Validate;
 
 use crate::Result;
-use crate::error::{
-    DbInteractSnafu, DbPoolSnafu, DbQuerySnafu, MaxorgsReachedSnafu, ValidationSnafu,
-};
+use crate::error::{DbInteractSnafu, DbPoolSnafu, DbQuerySnafu, ValidationSnafu};
 use crate::schema::orgs::{self, dsl};
-use crate::state::AppState;
-use memo::{utils::generate_id, validators::flatten_errors};
+use vault::utils::generate_id;
 
 #[derive(Debug, Clone, Queryable, Selectable, Insertable)]
 #[diesel(table_name = crate::schema::orgs)]
@@ -22,55 +19,23 @@ use memo::{utils::generate_id, validators::flatten_errors};
 pub struct Org {
     pub id: String,
     pub name: String,
-    pub default_bucket_id: Option<String>,
-    pub status: String,
-    pub admin: Option<i32>,
+    pub admin: bool,
     pub created_at: i64,
 }
 
 #[derive(Debug, Clone, Deserialize, Validate)]
 pub struct NewOrg {
     #[validate(length(min = 1, max = 50))]
-    #[validate(custom(function = "memo::validators::anyname"))]
+    #[validate(custom(function = "vault::validators::anyname"))]
     pub name: String,
-
-    #[validate(length(min = 1, max = 50))]
-    #[validate(custom(function = "memo::validators::uuid"))]
-    pub default_bucket_id: Option<String>,
-
-    #[validate(length(min = 1, max = 50))]
-    #[validate(custom(function = "memo::validators::status"))]
-    pub status: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Validate, AsChangeset)]
 #[diesel(table_name = crate::schema::orgs)]
 pub struct UpdateOrg {
     #[validate(length(min = 1, max = 50))]
-    #[validate(custom(function = "memo::validators::anyname"))]
+    #[validate(custom(function = "vault::validators::anyname"))]
     pub name: Option<String>,
-
-    #[validate(length(min = 1, max = 50))]
-    #[validate(custom(function = "memo::validators::uuid"))]
-    pub default_bucket_id: Option<Option<String>>,
-
-    #[validate(length(min = 1, max = 50))]
-    #[validate(custom(function = "memo::validators::status"))]
-    pub status: Option<String>,
-}
-
-#[derive(Debug, Clone, Deserialize, Validate)]
-pub struct OrgDefaultBucket {
-    #[validate(length(min = 1, max = 50))]
-    #[validate(custom(function = "memo::validators::uuid"))]
-    pub default_bucket_id: Option<String>,
-}
-
-#[derive(Debug, Clone, Deserialize, AsChangeset)]
-#[diesel(table_name = crate::schema::orgs)]
-pub struct UpdateOrgBucket {
-    #[diesel(treat_none_as_null = true)]
-    pub default_bucket_id: Option<String>,
 }
 
 impl From<OrgDto> for Org {
@@ -78,9 +43,7 @@ impl From<OrgDto> for Org {
         Org {
             id: dto.id,
             name: dto.name,
-            default_bucket_id: dto.default_bucket_id,
-            status: dto.status,
-            admin: if dto.admin { Some(1) } else { Some(0) },
+            admin: dto.admin,
             created_at: dto.created_at,
         }
     }
@@ -91,94 +54,10 @@ impl From<Org> for OrgDto {
         OrgDto {
             id: client.id,
             name: client.name,
-            default_bucket_id: client.default_bucket_id,
-            status: client.status,
-            admin: match client.admin {
-                Some(1) => true,
-                _ => false,
-            },
+            admin: client.admin,
             created_at: client.created_at,
         }
     }
-}
-
-// Can't have too many orgs
-const MAX_orgs: i32 = 10;
-
-pub async fn create_client(state: &AppState, data: &NewOrg, admin: bool) -> Result<Org> {
-    let valid_res = data.validate();
-    ensure!(
-        valid_res.is_ok(),
-        ValidationSnafu {
-            msg: flatten_errors(&valid_res.unwrap_err()),
-        }
-    );
-
-    // Limit the number of orgs because we are poor!
-    let count = state.db.orgs.count().await?;
-    ensure!(count < MAX_orgs as i64, MaxorgsReachedSnafu,);
-
-    state.db.orgs.create(data, admin).await
-}
-
-pub async fn update_client(state: &AppState, id: &str, data: &UpdateOrg) -> Result<bool> {
-    let valid_res = data.validate();
-    ensure!(
-        valid_res.is_ok(),
-        ValidationSnafu {
-            msg: flatten_errors(&valid_res.unwrap_err()),
-        }
-    );
-
-    // We can't tell whether we are setting default bucket to null or skipping it
-    // Will just use a separate function for that
-    if let Some(bucket_id) = data.default_bucket_id.clone() {
-        if let Some(bid) = bucket_id {
-            let bucket = state.db.buckets.get(&bid).await?;
-            ensure!(
-                bucket.is_some(),
-                ValidationSnafu {
-                    msg: "Default bucket not found".to_string(),
-                }
-            );
-        }
-    }
-
-    state.db.orgs.update(id, data).await
-}
-
-pub async fn delete_client(state: &AppState, id: &str) -> Result<()> {
-    let Some(client) = state.db.orgs.get(id).await? else {
-        return ValidationSnafu {
-            msg: "Org not found".to_string(),
-        }
-        .fail();
-    };
-
-    ensure!(
-        !client.admin,
-        ValidationSnafu {
-            msg: "Cannot delete admin client".to_string(),
-        }
-    );
-
-    let bucket_count = state.db.buckets.count_by_client(id).await?;
-    ensure!(
-        bucket_count == 0,
-        ValidationSnafu {
-            msg: "Org still has buckets".to_string(),
-        }
-    );
-
-    let users_count = state.db.users.count_by_client(id).await?;
-    ensure!(
-        users_count == 0,
-        ValidationSnafu {
-            msg: "Org still has users".to_string(),
-        }
-    );
-
-    state.db.orgs.delete(id).await
 }
 
 #[async_trait]
@@ -193,7 +72,7 @@ pub trait OrgRepoable: Send + Sync {
 
     async fn update(&self, id: &str, data: &UpdateOrg) -> Result<bool>;
 
-    async fn find_by_name(&self, name: &str) -> Result<Option<OrgDto>>;
+    async fn find_by_name(&self, name: &str) -> Result<Option<Org>>;
 
     async fn count(&self) -> Result<i64>;
 
@@ -272,12 +151,9 @@ impl OrgRepoable for OrgRepo {
         );
 
         let today = chrono::Utc::now().timestamp();
-        let admin = if admin { Some(1) } else { Some(0) };
         let client = Org {
             id: generate_id(),
             name: data.name.clone(),
-            default_bucket_id: data.default_bucket_id.clone(),
-            status: data.status.clone(),
             admin,
             created_at: today,
         };
@@ -429,9 +305,7 @@ pub fn create_test_client() -> Org {
     Org {
         id: TEST_CLIENT_ID.to_string(),
         name: "Test Org".to_string(),
-        default_bucket_id: None,
-        status: "active".to_string(),
-        admin: None,
+        admin: false,
         created_at: today,
     }
 }
@@ -442,9 +316,7 @@ pub fn create_test_admin_client() -> Org {
     Org {
         id: TEST_ADMIN_CLIENT_ID.to_string(),
         name: "Test Admin Org".to_string(),
-        default_bucket_id: None,
-        status: "active".to_string(),
-        admin: Some(1),
+        admin: true,
         created_at: today,
     }
 }
@@ -455,9 +327,7 @@ pub fn create_test_new_client() -> Org {
     Org {
         id: TEST_NEW_CLIENT_ID.to_string(),
         name: "Test New Org".to_string(),
-        default_bucket_id: None,
-        status: "active".to_string(),
-        admin: None,
+        admin: false,
         created_at: today,
     }
 }
