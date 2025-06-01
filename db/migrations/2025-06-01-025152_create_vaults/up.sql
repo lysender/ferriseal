@@ -4,6 +4,7 @@ CREATE TABLE vaults (
     name VARCHAR(50) NOT NULL,
     test_cipher VARCHAR(255) NOT NULL,
     created_at BIGINT NOT NULL,
+    updated_at BIGINT NOT NULL,
     FOREIGN KEY (org_id) REFERENCES orgs(id)
 );
 

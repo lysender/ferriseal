@@ -5,11 +5,11 @@ use diesel::prelude::*;
 use diesel::{QueryDsl, SelectableHelper};
 use dto::org::OrgDto;
 use serde::Deserialize;
-use snafu::{ResultExt, ensure};
+use snafu::ResultExt;
 use validator::Validate;
 
 use crate::Result;
-use crate::error::{DbInteractSnafu, DbPoolSnafu, DbQuerySnafu, ValidationSnafu};
+use crate::error::{DbInteractSnafu, DbPoolSnafu, DbQuerySnafu};
 use crate::schema::orgs::{self, dsl};
 use vault::utils::generate_id;
 
@@ -50,19 +50,19 @@ impl From<OrgDto> for Org {
 }
 
 impl From<Org> for OrgDto {
-    fn from(client: Org) -> Self {
+    fn from(org: Org) -> Self {
         OrgDto {
-            id: client.id,
-            name: client.name,
-            admin: client.admin,
-            created_at: client.created_at,
+            id: org.id,
+            name: org.name,
+            admin: org.admin,
+            created_at: org.created_at,
         }
     }
 }
 
 #[async_trait]
 pub trait OrgRepoable: Send + Sync {
-    async fn list(&self, client_id: Option<String>) -> Result<Vec<Org>>;
+    async fn list(&self, org_id: Option<String>) -> Result<Vec<Org>>;
 
     async fn find_admin(&self) -> Result<Option<Org>>;
 
@@ -71,8 +71,6 @@ pub trait OrgRepoable: Send + Sync {
     async fn get(&self, id: &str) -> Result<Option<OrgDto>>;
 
     async fn update(&self, id: &str, data: &UpdateOrg) -> Result<bool>;
-
-    async fn find_by_name(&self, name: &str) -> Result<Option<Org>>;
 
     async fn count(&self) -> Result<i64>;
 
@@ -91,14 +89,14 @@ impl OrgRepo {
 
 #[async_trait]
 impl OrgRepoable for OrgRepo {
-    async fn list(&self, client_id: Option<String>) -> Result<Vec<Org>> {
+    async fn list(&self, org_id: Option<String>) -> Result<Vec<Org>> {
         let db = self.db_pool.get().await.context(DbPoolSnafu)?;
 
-        let client_id_copy = client_id.clone();
+        let org_id_copy = org_id.clone();
         let select_res = db
             .interact(move |conn| {
                 let mut query = dsl::orgs.into_boxed();
-                if let Some(cid) = client_id_copy {
+                if let Some(cid) = org_id_copy {
                     query = query.filter(dsl::id.eq(cid));
                 }
 
@@ -123,7 +121,7 @@ impl OrgRepoable for OrgRepo {
         let select_res = db
             .interact(move |conn| {
                 dsl::orgs
-                    .filter(dsl::admin.eq(Some(1)))
+                    .filter(dsl::admin.eq(true))
                     .select(Org::as_select())
                     .first::<Org>(conn)
                     .optional()
@@ -141,28 +139,19 @@ impl OrgRepoable for OrgRepo {
     async fn create(&self, data: &NewOrg, admin: bool) -> Result<Org> {
         let db = self.db_pool.get().await.context(DbPoolSnafu)?;
 
-        // Org name must be unique
-        let existing = self.find_by_name(&data.name).await?;
-        ensure!(
-            existing.is_none(),
-            ValidationSnafu {
-                msg: "Org name already exists".to_string(),
-            }
-        );
-
         let today = chrono::Utc::now().timestamp();
-        let client = Org {
+        let org = Org {
             id: generate_id(),
             name: data.name.clone(),
             admin,
             created_at: today,
         };
 
-        let client_copy = client.clone();
+        let org_copy = org.clone();
         let insert_res = db
             .interact(move |conn| {
                 diesel::insert_into(orgs::table)
-                    .values(&client_copy)
+                    .values(&org_copy)
                     .execute(conn)
             })
             .await
@@ -172,7 +161,7 @@ impl OrgRepoable for OrgRepo {
             table: "orgs".to_string(),
         })?;
 
-        Ok(client)
+        Ok(org)
     }
 
     async fn get(&self, id: &str) -> Result<Option<OrgDto>> {
@@ -200,18 +189,6 @@ impl OrgRepoable for OrgRepo {
     async fn update(&self, id: &str, data: &UpdateOrg) -> Result<bool> {
         let db = self.db_pool.get().await.context(DbPoolSnafu)?;
 
-        // Org name must be unique
-        if let Some(name) = data.name.clone() {
-            if let Some(existing) = self.find_by_name(&name).await? {
-                ensure!(
-                    &existing.id == id,
-                    ValidationSnafu {
-                        msg: "Org name already exists".to_string(),
-                    }
-                );
-            }
-        }
-
         let id = id.to_string();
         let data_copy = data.clone();
         let update_res = db
@@ -229,28 +206,6 @@ impl OrgRepoable for OrgRepo {
         })?;
 
         Ok(item > 0)
-    }
-
-    async fn find_by_name(&self, name: &str) -> Result<Option<OrgDto>> {
-        let db = self.db_pool.get().await.context(DbPoolSnafu)?;
-
-        let name_copy = name.to_string();
-        let select_res = db
-            .interact(move |conn| {
-                dsl::orgs
-                    .filter(dsl::name.eq(name_copy.as_str()))
-                    .select(Org::as_select())
-                    .first::<Org>(conn)
-                    .optional()
-            })
-            .await
-            .context(DbInteractSnafu)?;
-
-        let item = select_res.context(DbQuerySnafu {
-            table: "orgs".to_string(),
-        })?;
-
-        Ok(item.map(|item| item.into()))
     }
 
     async fn count(&self) -> Result<i64> {
@@ -288,22 +243,22 @@ impl OrgRepoable for OrgRepo {
 }
 
 #[cfg(test)]
-pub const TEST_CLIENT_ID: &'static str = "0196d19e01b1745980a8419edd88e3d1";
+pub const TEST_ORG_ID: &'static str = "0196d19e01b1745980a8419edd88e3d1";
 
 #[cfg(test)]
-pub const TEST_ADMIN_CLIENT_ID: &'static str = "0196d1a2784a72959c97eef5dbc69dc7";
+pub const TEST_ADMIN_ORG_ID: &'static str = "0196d1a2784a72959c97eef5dbc69dc7";
 
 #[cfg(test)]
-pub const TEST_NEW_CLIENT_ID: &'static str = "0196d1a2784a72959c97eef5dbc69dc7";
+pub const TEST_NEW_ORG_ID: &'static str = "0196d1a2784a72959c97eef5dbc69dc7";
 
 #[cfg(test)]
 pub struct OrgTestRepo {}
 
 #[cfg(test)]
-pub fn create_test_client() -> Org {
+pub fn create_test_org() -> Org {
     let today = chrono::Utc::now().timestamp();
     Org {
-        id: TEST_CLIENT_ID.to_string(),
+        id: TEST_ORG_ID.to_string(),
         name: "Test Org".to_string(),
         admin: false,
         created_at: today,
@@ -311,10 +266,10 @@ pub fn create_test_client() -> Org {
 }
 
 #[cfg(test)]
-pub fn create_test_admin_client() -> Org {
+pub fn create_test_admin_org() -> Org {
     let today = chrono::Utc::now().timestamp();
     Org {
-        id: TEST_ADMIN_CLIENT_ID.to_string(),
+        id: TEST_ADMIN_ORG_ID.to_string(),
         name: "Test Admin Org".to_string(),
         admin: true,
         created_at: today,
@@ -322,10 +277,10 @@ pub fn create_test_admin_client() -> Org {
 }
 
 #[cfg(test)]
-pub fn create_test_new_client() -> Org {
+pub fn create_test_new_org() -> Org {
     let today = chrono::Utc::now().timestamp();
     Org {
-        id: TEST_NEW_CLIENT_ID.to_string(),
+        id: TEST_NEW_ORG_ID.to_string(),
         name: "Test New Org".to_string(),
         admin: false,
         created_at: today,
@@ -335,11 +290,11 @@ pub fn create_test_new_client() -> Org {
 #[cfg(test)]
 #[async_trait]
 impl OrgRepoable for OrgTestRepo {
-    async fn list(&self, client_id: Option<String>) -> Result<Vec<Org>> {
-        let client1 = create_test_client();
-        let client2 = create_test_admin_client();
-        let orgs = vec![client1, client2];
-        match client_id {
+    async fn list(&self, org_id: Option<String>) -> Result<Vec<Org>> {
+        let org1 = create_test_org();
+        let org2 = create_test_admin_org();
+        let orgs = vec![org1, org2];
+        match org_id {
             Some(cid) => {
                 let filtered: Vec<Org> =
                     orgs.into_iter().filter(|x| x.id.as_str() == cid).collect();
@@ -350,11 +305,11 @@ impl OrgRepoable for OrgTestRepo {
     }
 
     async fn find_admin(&self) -> Result<Option<Org>> {
-        Ok(Some(create_test_admin_client()))
+        Ok(Some(create_test_admin_org()))
     }
 
     async fn create(&self, _data: &NewOrg, _admin: bool) -> Result<Org> {
-        Ok(create_test_new_client())
+        Ok(create_test_new_org())
     }
 
     async fn get(&self, id: &str) -> Result<Option<OrgDto>> {
@@ -365,12 +320,6 @@ impl OrgRepoable for OrgTestRepo {
 
     async fn update(&self, _id: &str, _data: &UpdateOrg) -> Result<bool> {
         Ok(true)
-    }
-
-    async fn find_by_name(&self, name: &str) -> Result<Option<OrgDto>> {
-        let orgs = self.list(None).await?;
-        let found = orgs.into_iter().find(|x| x.name.as_str() == name);
-        Ok(found.map(|x| x.into()))
     }
 
     async fn count(&self) -> Result<i64> {

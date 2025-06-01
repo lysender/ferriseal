@@ -44,6 +44,7 @@ diesel::table! {
         name -> Text,
         test_cipher -> Text,
         created_at -> BigInt,
+        updated_at -> BigInt,
     }
 }
 

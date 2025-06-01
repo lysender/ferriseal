@@ -5,29 +5,27 @@ use diesel::dsl::count_star;
 use diesel::prelude::*;
 use diesel::{QueryDsl, SelectableHelper};
 use serde::Deserialize;
-use snafu::{OptionExt, ResultExt, ensure};
+use snafu::{ResultExt, ensure};
 use validator::Validate;
 
-use super::password::hash_password;
-use crate::auth::password::verify_password;
+use crate::Result;
 use crate::error::{
     DbInteractSnafu, DbPoolSnafu, DbQuerySnafu, InvalidRolesSnafu, MaxUsersReachedSnafu,
-    ValidationSnafu, WhateverSnafu,
+    PasswordSnafu, ValidationSnafu,
 };
 use crate::schema::users::{self, dsl};
-use crate::state::AppState;
-use crate::{Error, Result};
-use memo::role::{Role, to_roles};
-use memo::user::UserDto;
-use memo::utils::generate_id;
-use memo::validators::flatten_errors;
+use dto::role::{Role, to_roles};
+use dto::user::UserDto;
+use password::hash_password;
+use vault::utils::generate_id;
+use vault::validators::flatten_errors;
 
 #[derive(Debug, Clone, Queryable, Selectable, Insertable)]
 #[diesel(table_name = crate::schema::users)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct User {
     pub id: String,
-    pub client_id: String,
+    pub org_id: String,
     pub username: String,
     pub password: String,
     pub status: String,
@@ -42,7 +40,7 @@ impl From<User> for UserDto {
         let roles = to_roles(role_list).expect("Invalid roles");
         UserDto {
             id: user.id,
-            client_id: user.client_id,
+            org_id: user.org_id,
             username: user.username,
             status: user.status,
             roles,
@@ -55,14 +53,14 @@ impl From<User> for UserDto {
 #[derive(Debug, Clone, Deserialize, Validate)]
 pub struct NewUser {
     #[validate(length(min = 1, max = 30))]
-    #[validate(custom(function = "memo::validators::alphanumeric"))]
+    #[validate(custom(function = "vault::validators::alphanumeric"))]
     pub username: String,
 
     #[validate(length(min = 8, max = 60))]
     pub password: String,
 
     #[validate(length(min = 1, max = 100))]
-    #[validate(custom(function = "memo::validators::csvname"))]
+    #[validate(custom(function = "vault::validators::csvname"))]
     pub roles: String,
 }
 
@@ -75,7 +73,7 @@ pub struct UpdateUserStatus {
 #[derive(Debug, Clone, Deserialize, Validate)]
 pub struct UpdateUserRoles {
     #[validate(length(min = 1, max = 100))]
-    #[validate(custom(function = "memo::validators::csvname"))]
+    #[validate(custom(function = "vault::validators::csvname"))]
     pub roles: String,
 }
 
@@ -94,53 +92,19 @@ pub struct ChangeCurrentPassword {
     pub new_password: String,
 }
 
-const MAX_USERS_PER_CLIENT: i32 = 50;
-
-pub async fn change_current_password(
-    state: &AppState,
-    user_id: &str,
-    data: &ChangeCurrentPassword,
-) -> Result<bool> {
-    let errors = data.validate();
-    ensure!(
-        errors.is_ok(),
-        ValidationSnafu {
-            msg: flatten_errors(&errors.unwrap_err()),
-        }
-    );
-
-    let user = state.db.users.get(user_id).await?.context(WhateverSnafu {
-        msg: "Unable to re-query user".to_string(),
-    })?;
-
-    // Validate current password
-    if let Err(verify_err) = verify_password(&data.current_password, &user.password) {
-        return match verify_err {
-            Error::InvalidPassword => Err(Error::Validation {
-                msg: "Current password is incorrect".to_string(),
-            }),
-            _ => Err(verify_err),
-        };
-    }
-
-    let new_data = UpdateUserPassword {
-        password: data.new_password.clone(),
-    };
-
-    state.db.users.update_password(user_id, &new_data).await
-}
+const MAX_USERS_PER_ORG: i32 = 10;
 
 #[async_trait]
 pub trait UserRepoable: Send + Sync {
-    async fn list(&self, client_id: &str) -> Result<Vec<User>>;
+    async fn list(&self, org_id: &str) -> Result<Vec<User>>;
 
-    async fn create(&self, client_id: &str, data: &NewUser, is_setup: bool) -> Result<User>;
+    async fn create(&self, org_id: &str, data: &NewUser, is_setup: bool) -> Result<User>;
 
     async fn get(&self, id: &str) -> Result<Option<User>>;
 
     async fn find_by_username(&self, username: &str) -> Result<Option<User>>;
 
-    async fn count_by_client(&self, client_id: &str) -> Result<i64>;
+    async fn count_by_org(&self, org_id: &str) -> Result<i64>;
 
     async fn update_status(&self, id: &str, data: &UpdateUserStatus) -> Result<bool>;
 
@@ -163,14 +127,14 @@ impl UserRepo {
 
 #[async_trait]
 impl UserRepoable for UserRepo {
-    async fn list(&self, client_id: &str) -> Result<Vec<User>> {
+    async fn list(&self, org_id: &str) -> Result<Vec<User>> {
         let db = self.db_pool.get().await.context(DbPoolSnafu)?;
 
-        let client_id = client_id.to_string();
+        let org_id = org_id.to_string();
         let select_res = db
             .interact(move |conn| {
                 dsl::users
-                    .filter(dsl::client_id.eq(&client_id))
+                    .filter(dsl::org_id.eq(&org_id))
                     .select(User::as_select())
                     .order(dsl::username.asc())
                     .load::<User>(conn)
@@ -185,7 +149,7 @@ impl UserRepoable for UserRepo {
         Ok(items)
     }
 
-    async fn create(&self, client_id: &str, data: &NewUser, is_setup: bool) -> Result<User> {
+    async fn create(&self, org_id: &str, data: &NewUser, is_setup: bool) -> Result<User> {
         let errors = data.validate();
         ensure!(
             errors.is_ok(),
@@ -195,8 +159,8 @@ impl UserRepoable for UserRepo {
         );
 
         let db = self.db_pool.get().await.context(DbPoolSnafu)?;
-        let count = self.count_by_client(client_id).await?;
-        ensure!(count < MAX_USERS_PER_CLIENT as i64, MaxUsersReachedSnafu);
+        let count = self.count_by_org(org_id).await?;
+        ensure!(count < MAX_USERS_PER_ORG as i64, MaxUsersReachedSnafu);
 
         // Username must be unique
         let existing = self.find_by_username(&data.username).await?;
@@ -224,11 +188,11 @@ impl UserRepoable for UserRepo {
 
         let data_copy = data.clone();
         let today = chrono::Utc::now().timestamp();
-        let hashed = hash_password(&data.password)?;
+        let hashed = hash_password(&data.password).context(PasswordSnafu)?;
 
         let dir = User {
             id: generate_id(),
-            client_id: client_id.to_string(),
+            org_id: org_id.to_string(),
             username: data_copy.username,
             password: hashed,
             status: "active".to_string(),
@@ -298,14 +262,14 @@ impl UserRepoable for UserRepo {
         Ok(user)
     }
 
-    async fn count_by_client(&self, client_id: &str) -> Result<i64> {
+    async fn count_by_org(&self, org_id: &str) -> Result<i64> {
         let db = self.db_pool.get().await.context(DbPoolSnafu)?;
 
-        let client_id = client_id.to_string();
+        let org_id = org_id.to_string();
         let count_res = db
             .interact(move |conn| {
                 dsl::users
-                    .filter(dsl::client_id.eq(&client_id))
+                    .filter(dsl::org_id.eq(&org_id))
                     .select(count_star())
                     .get_result::<i64>(conn)
             })
@@ -414,7 +378,7 @@ impl UserRepoable for UserRepo {
 
         let id = id.to_string();
         let today = chrono::Utc::now().timestamp();
-        let hashed = hash_password(&data.password)?;
+        let hashed = hash_password(&data.password).context(PasswordSnafu)?;
         let update_res = db
             .interact(move |conn| {
                 diesel::update(dsl::users)
@@ -459,14 +423,14 @@ pub const TEST_USER_ID: &'static str = "0196d1adc6807c2c8aa49982466faf88";
 
 #[cfg(test)]
 pub fn create_test_admin_user() -> Result<User> {
-    use crate::client::TEST_ADMIN_CLIENT_ID;
+    use crate::org::TEST_ADMIN_ORG_ID;
 
-    let password = hash_password("secret-password")?;
+    let password = hash_password("secret-password").context(PasswordSnafu)?;
     let today = chrono::Utc::now().timestamp();
 
     Ok(User {
         id: TEST_ADMIN_USER_ID.to_string(),
-        client_id: TEST_ADMIN_CLIENT_ID.to_string(),
+        org_id: TEST_ADMIN_ORG_ID.to_string(),
         username: "admin".to_string(),
         password,
         status: "active".to_string(),
@@ -478,14 +442,14 @@ pub fn create_test_admin_user() -> Result<User> {
 
 #[cfg(test)]
 pub fn create_test_user() -> Result<User> {
-    use crate::client::TEST_CLIENT_ID;
+    use crate::org::TEST_ORG_ID;
 
-    let password = hash_password("secret-password")?;
+    let password = hash_password("secret-password").context(PasswordSnafu)?;
     let today = chrono::Utc::now().timestamp();
 
     Ok(User {
         id: TEST_USER_ID.to_string(),
-        client_id: TEST_CLIENT_ID.to_string(),
+        org_id: TEST_ORG_ID.to_string(),
         username: "user".to_string(),
         password,
         status: "active".to_string(),
@@ -501,18 +465,18 @@ pub struct UserTestRepo {}
 #[cfg(test)]
 #[async_trait]
 impl UserRepoable for UserTestRepo {
-    async fn list(&self, client_id: &str) -> Result<Vec<User>> {
+    async fn list(&self, org_id: &str) -> Result<Vec<User>> {
         let user1 = create_test_admin_user()?;
         let user2 = create_test_user()?;
         let users = vec![user1, user2];
         let filtered: Vec<User> = users
             .into_iter()
-            .filter(|x| x.client_id.as_str() == client_id)
+            .filter(|x| x.org_id.as_str() == org_id)
             .collect();
         Ok(filtered)
     }
 
-    async fn create(&self, _client_id: &str, _data: &NewUser, _is_setup: bool) -> Result<User> {
+    async fn create(&self, _org_id: &str, _data: &NewUser, _is_setup: bool) -> Result<User> {
         Err("Not supported".into())
     }
 
@@ -532,8 +496,8 @@ impl UserRepoable for UserTestRepo {
         Ok(found)
     }
 
-    async fn count_by_client(&self, client_id: &str) -> Result<i64> {
-        let users = self.list(client_id).await?;
+    async fn count_by_org(&self, org_id: &str) -> Result<i64> {
+        let users = self.list(org_id).await?;
         Ok(users.len() as i64)
     }
 

@@ -1,8 +1,5 @@
-use std::path::PathBuf;
-
-use axum::extract::rejection::JsonRejection;
 use deadpool_diesel::{InteractError, PoolError};
-use dto::role::{InvalidPermissionsError, InvalidRolesError};
+use dto::role::InvalidRolesError;
 use snafu::{Backtrace, Snafu};
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -32,92 +29,18 @@ pub enum Error {
     #[snafu(display("{}", msg))]
     Validation { msg: String },
 
-    #[snafu(display("Maximum number of clients reached: 10"))]
-    MaxClientsReached,
-
     #[snafu(display("Maximum number of users reached: 100"))]
     MaxUsersReached,
 
-    #[snafu(display("Maximum number of buckets reached: 50"))]
-    MaxBucketsReached,
-
-    #[snafu(display("Maximum number of directories reached: 1000"))]
-    MaxDirsReached,
-
-    #[snafu(display("Maximum number of files reached: 1000"))]
-    MaxFilesReached,
-
-    #[snafu(display("{}", msg))]
-    BadRequest { msg: String },
-
-    #[snafu(display("{}", msg))]
-    Forbidden { msg: String },
-
-    #[snafu(display("{}", msg))]
-    JsonRejection {
-        msg: String,
-        source: JsonRejection,
+    #[snafu(display("{}", source))]
+    Password {
+        source: password::Error,
         backtrace: Backtrace,
     },
-
-    #[snafu(display("Unable to create file: {:?}", path))]
-    CreateFile {
-        path: PathBuf,
-        source: std::io::Error,
-        backtrace: Backtrace,
-    },
-
-    #[snafu(display("File type not allowed"))]
-    FileTypeNotAllowed,
-
-    #[snafu(display("{}", msg))]
-    NotFound { msg: String },
-
-    #[snafu(display("Invalid auth token"))]
-    InvalidAuthToken,
-
-    #[snafu(display("Insufficient auth scope"))]
-    InsufficientAuthScope,
-
-    #[snafu(display("No auth token"))]
-    NoAuthToken,
-
-    #[snafu(display("Invalid client"))]
-    InvalidClient,
-
-    #[snafu(display("Requires authentication"))]
-    RequiresAuth,
-
-    #[snafu(display("{}", msg))]
-    HashPassword { msg: String },
-
-    #[snafu(display("{}", msg))]
-    VerifyPasswordHash { msg: String },
-
-    #[snafu(display("Invalid username or password"))]
-    InvalidPassword,
-
-    #[snafu(display("Inactive user"))]
-    InactiveUser,
-
-    #[snafu(display("User not found"))]
-    UserNotFound,
 
     #[snafu(display("{}", source))]
     InvalidRoles {
         source: InvalidRolesError,
-        backtrace: Backtrace,
-    },
-
-    #[snafu(display("{}", source))]
-    InvalidPermissions {
-        source: InvalidPermissionsError,
-        backtrace: Backtrace,
-    },
-
-    #[snafu(display("Upload error: {}", source))]
-    UploadFile {
-        source: std::io::Error,
         backtrace: Backtrace,
     },
 

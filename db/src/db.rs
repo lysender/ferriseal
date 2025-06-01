@@ -3,11 +3,10 @@ use std::sync::Arc;
 use deadpool_diesel::sqlite::{Manager, Pool, Runtime};
 
 use crate::{
-    auth::user::{UserRepo, UserRepoable},
-    bucket::{BucketRepo, BucketRepoable},
-    client::{ClientRepo, ClientRepoable},
-    dir::{DirRepo, DirRepoable},
-    entry::{FileRepo, FileRepoable},
+    entry::{EntryRepo, EntryRepoable},
+    org::{OrgRepo, OrgRepoable},
+    user::{UserRepo, UserRepoable},
+    vault::{VaultRepo, VaultRepoable},
 };
 
 pub fn create_db_pool(database_url: &str) -> Pool {
@@ -16,37 +15,33 @@ pub fn create_db_pool(database_url: &str) -> Pool {
 }
 
 pub struct DbMapper {
-    pub buckets: Arc<dyn BucketRepoable>,
-    pub clients: Arc<dyn ClientRepoable>,
-    pub dirs: Arc<dyn DirRepoable>,
-    pub files: Arc<dyn FileRepoable>,
+    pub vaults: Arc<dyn VaultRepoable>,
+    pub orgs: Arc<dyn OrgRepoable>,
+    pub entries: Arc<dyn EntryRepoable>,
     pub users: Arc<dyn UserRepoable>,
 }
 
 pub fn create_db_mapper(database_url: &str) -> DbMapper {
     let pool = create_db_pool(database_url);
     DbMapper {
-        buckets: Arc::new(BucketRepo::new(pool.clone())),
-        clients: Arc::new(ClientRepo::new(pool.clone())),
-        dirs: Arc::new(DirRepo::new(pool.clone())),
-        files: Arc::new(FileRepo::new(pool.clone())),
+        vaults: Arc::new(VaultRepo::new(pool.clone())),
+        orgs: Arc::new(OrgRepo::new(pool.clone())),
+        entries: Arc::new(EntryRepo::new(pool.clone())),
         users: Arc::new(UserRepo::new(pool.clone())),
     }
 }
 
 #[cfg(test)]
 pub fn create_test_db_mapper() -> DbMapper {
-    use crate::auth::user::UserTestRepo;
-    use crate::bucket::BucketTestRepo;
-    use crate::client::ClientTestRepo;
-    use crate::dir::DirTestRepo;
-    use crate::entry::FileTestRepo;
+    use crate::entry::EntryTestRepo;
+    use crate::org::OrgTestRepo;
+    use crate::user::UserTestRepo;
+    use crate::vault::VaultTestRepo;
 
     DbMapper {
-        buckets: Arc::new(BucketTestRepo {}),
-        clients: Arc::new(ClientTestRepo {}),
-        dirs: Arc::new(DirTestRepo {}),
-        files: Arc::new(FileTestRepo {}),
+        vaults: Arc::new(VaultTestRepo {}),
+        orgs: Arc::new(OrgTestRepo {}),
+        entries: Arc::new(EntryTestRepo {}),
         users: Arc::new(UserTestRepo {}),
     }
 }
