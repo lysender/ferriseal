@@ -28,14 +28,19 @@ Workflow:
 
 ```
 diesel setup --database-url=sqlite://db/db.sqlite3
+diesel migration generate create_orgs --database-url=sqlite://db/db.sqlite3
 diesel migration generate create_users --database-url=sqlite://db/db.sqlite3
 diesel migration generate create_vaults --database-url=sqlite://db/db.sqlite3
 diesel migration generate create_entries --database-url=sqlite://db/db.sqlite3
+
+diesel migration run --database-url=sqlite://db/db.sqlite3
+diesel migration redo --database-url=sqlite://db/db.sqlite3
+diesel migration revert --database-url=sqlite://db/db.sqlite3
 ```
 
 ## Encryption crates
 
-- `aes-gcm`
+- `chacha20poly1305`
 
 It is designed for personal use and not indended for large number of concurrent users.
 The goal of the service is to provide an economical way to store and retrieve
@@ -81,10 +86,18 @@ Create a Google Cloud Service Account with the following roles:
 - Storage Insights Collector Service
 - Storage Object Admin
 
+## Orgs
+
+Org:
+- id
+- name
+- created_at
+
 ## Users
 
 User:
 - id
+- org_id
 - username
 - password
 - status: active, inactive
@@ -96,8 +109,9 @@ User:
 
 Vault:
 - id
+- org_id
 - name
-- cipher_key
+- test_cipher
 - created_at
 - updated_at
 
