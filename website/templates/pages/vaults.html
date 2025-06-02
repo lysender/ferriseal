@@ -6,21 +6,21 @@
         <nav class="breadcrumb" aria-label="breadcrumbs">
             <ul>
                 <li><a href="/">Home</a></li>
-                <li><a href="/clients">Clients</a></li>
-                <li><a href="/clients/{{ client.id }}">{{ client.name }}</a></li>
+                <li><a href="/orgs">Orgs</a></li>
+                <li><a href="/orgs/{{ org.id }}">{{ org.name }}</a></li>
                 <li class="is-active">
-                    <a href="/clients/{{ client.id }}/buckets" aria-current="page">
-                        <span>Buckets</span>
+                    <a href="/orgs/{{ org.id }}/vaults" aria-current="page">
+                        <span>Vaults</span>
                     </a>
                 </li>
             </ul>
         </nav>
 
-        <h1 class="title">Bucket Management</h1>
+        <h1 class="title">Vault Management</h1>
 
         <div class="is-flex is-justify-content-space-between mb-5">
             <div>
-                <a class="button" href="/clients/{{ client.id }}">
+                <a class="button" href="/orgs/{{ org.id }}">
                     <span class="icon is-small">
                         <i class="fas fa-arrow-left"></i>
                     </span>
@@ -29,35 +29,27 @@
             </div>
 
             <div>
-                <a class="button is-primary" href="/clients/{{ client.id }}/buckets/new">
+                <a class="button is-primary" href="/orgs/{{ org.id }}/vaults/new">
                     <span class="icon is-small">
                         <i class="fas fa-plus"></i>
                     </span>
-                    <span>New Bucket</span>
+                    <span>New Vault</span>
                 </a>
             </div>
         </div>
 
-        {% if buckets.len() > 0 %}
+        {% if vaults.len() > 0 %}
         <div class="box">
             <table class="table is-striped is-hoverable is-fullwidth">
               <thead>
                 <tr>
                   <th>Name</th>
-                  <th>Content Type</th>
                 </tr>
               </thead>
               <tbody>
-                {% for bucket in buckets %}
+                {% for vault in vaults %}
                 <tr>
-                    <td><a href="/clients/{{ client.id }}/buckets/{{ bucket.id }}">{{ bucket.name }}</a></td>
-                    <td>
-                        {% if bucket.images_only %}
-                        <span class="tag is-primary">Images</span>
-                        {% else %}
-                        <span class="tag is-dark">Files</span>
-                        {% endif %}
-                    </td>
+                    <td><a href="/orgs/{{ org.id }}/vaults/{{ vault.id }}">{{ vault.name }}</a></td>
                 </tr>
                 {% endfor %}
               </tbody>
@@ -66,10 +58,10 @@
         {% else %}
         <div class="message is-info">
             <div class="message-header">
-                <p>No buckets</p>
+                <p>No vaults</p>
             </div>
             <div class="message-body">
-                There are no buckets yet for this client.
+                There are no vaults yet for this org.
             </div>
         </div>
         {% endif %}

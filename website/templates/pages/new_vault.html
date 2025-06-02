@@ -6,18 +6,20 @@
         <nav class="breadcrumb" aria-label="breadcrumbs">
             <ul>
                 <li><a href="/">Home</a></li>
-                <li><a href="/clients">Clients</a></li>
+                <li><a href="/orgs">Orgs</a></li>
+                <li><a href="/orgs/{{ org.id }}">{{ org.name }}</a></li>
+                <li><a href="/orgs/{{ org.id }}/vaults">Vaults</a></li>
                 <li class="is-active">
-                    <a href="/clients/new" aria-current="page">New client</a>
+                    <a href="/orgs/{{ org.id }}/vaults/new" aria-current="page">New vault</a>
                 </li>
             </ul>
         </nav>
 
-        <h1 class="title">Create new client</h1>
+        <h1 class="title">Create new vault</h1>
 
         <div class="columns">
             <div class="column is-half">
-                {% include "widgets/new_client_form.html" %}
+                {% include "widgets/new_vault_form.html" %}
             </div>
         </div>
     </div>

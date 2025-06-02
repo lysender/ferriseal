@@ -1,11 +1,7 @@
-<form
-    method="post"
-    action="/clients/{{ client.id }}/buckets/new"
-    hx-post="/clients/{{ client.id }}/buckets/new"
->
+<form method="post" action="{{ action }}" hx-post="{{ action }}">
     <div class="card">
         <div class="card-content">
-            <h1 class="title is-4 has-text-weight-bold">Bucket</h1>
+            <h1 class="title is-4 has-text-weight-bold">Org</h1>
 
             {% match error_message %}
                 {% when Some with (msg) %}
@@ -21,28 +17,14 @@
                     <input
                         class="input"
                         type="text"
-                        id="create-bucket-name"
+                        id="create-org-name"
                         name="name"
                         value="{{ payload.name }}"
-                        placeholder="Bucket Name"
+                        placeholder="Client Name"
                         required
                         minlength="1"
                         maxlength="60"
                     >
-                </div>
-            </div>
-
-            <div class="field">
-                <label class="label">Content Type</label>
-                <div class="control">
-                    <label class="checkbox">
-                        {%if let Some(images_only) = payload.images_only %}
-                        <input name="images_only" type="checkbox" value="1" checked />
-                        {% else %}
-                        <input name="images_only" type="checkbox" value="1" />
-                        {% endif %}
-                        &nbsp;Images only
-                    </label>
                 </div>
             </div>
 
@@ -54,7 +36,7 @@
                     <button class="button is-link" type="submit" name="submit">Submit</button>
                 </div>
                 <div class="control">
-                    <a class="button is-link is-light" href="/clients/{{ client.id }}/buckets">Cancel</a>
+                    <a class="button is-link is-light" href="/orgs">Cancel</a>
                 </div>
             </div>
         </div>

@@ -1,13 +1,11 @@
 use askama::Template;
 use axum::http::StatusCode;
 use axum::{Extension, Form, body::Body, extract::State, response::Response};
-use memo::client::ClientDto;
-use memo::role::Permission;
 use snafu::{ResultExt, ensure};
 
 use crate::error::ForbiddenSnafu;
 use crate::models::tokens::TokenFormData;
-use crate::services::clients::{create_client, delete_client, update_client};
+use crate::services::orgs::{create_org, delete_org, update_org};
 use crate::{
     Error, Result,
     ctx::Ctx,
@@ -15,44 +13,46 @@ use crate::{
     models::{Pref, TemplateData},
     run::AppState,
     services::{
-        clients::{ClientFormSubmitData, list_clients},
+        orgs::{OrgFormSubmitData, list_orgs},
         token::create_csrf_token,
     },
     web::{Action, Resource, enforce_policy},
 };
+use dto::org::OrgDto;
+use dto::role::Permission;
 
 #[derive(Template)]
-#[template(path = "widgets/clients.html")]
-struct ClientsTemplate {
+#[template(path = "widgets/orgs.html")]
+struct OrgsTemplate {
     error_message: Option<String>,
-    clients: Vec<ClientDto>,
+    orgs: Vec<OrgDto>,
 }
 
 #[derive(Template)]
-#[template(path = "pages/clients.html")]
-struct ClientsPageTemplate {
+#[template(path = "pages/orgs.html")]
+struct OrgsPageTemplate {
     t: TemplateData,
 }
 
-pub async fn clients_handler(
+pub async fn orgs_handler(
     Extension(ctx): Extension<Ctx>,
     Extension(pref): Extension<Pref>,
     State(state): State<AppState>,
 ) -> Result<Response<Body>> {
     let actor = ctx.actor().expect("actor is required");
-    let _ = enforce_policy(actor, Resource::Album, Action::Read)?;
+    let _ = enforce_policy(actor, Resource::Org, Action::Read)?;
 
     ensure!(
         actor.is_system_admin(),
         ForbiddenSnafu {
-            msg: "Clients page require system admin privileges."
+            msg: "Orgs page require system admin privileges."
         }
     );
 
     let mut t = TemplateData::new(&state, Some(actor.clone()), &pref);
-    t.title = String::from("Clients");
+    t.title = String::from("Orgs");
 
-    let tpl = ClientsPageTemplate { t };
+    let tpl = OrgsPageTemplate { t };
 
     Ok(Response::builder()
         .status(200)
@@ -60,21 +60,21 @@ pub async fn clients_handler(
         .context(ResponseBuilderSnafu)?)
 }
 
-pub async fn clients_listing_handler(
+pub async fn orgs_listing_handler(
     Extension(ctx): Extension<Ctx>,
     State(state): State<AppState>,
 ) -> Result<Response<Body>> {
     let config = state.config.clone();
 
-    let mut tpl = ClientsTemplate {
+    let mut tpl = OrgsTemplate {
         error_message: None,
-        clients: Vec::new(),
+        orgs: Vec::new(),
     };
 
     let token = ctx.token().expect("token is required");
-    match list_clients(&config.api_url, token).await {
-        Ok(clients) => {
-            tpl.clients = clients;
+    match list_orgs(&config.api_url, token).await {
+        Ok(orgs) => {
+            tpl.orgs = orgs;
             build_response(tpl)
         }
         Err(err) => build_error_response(tpl, err),
@@ -82,23 +82,23 @@ pub async fn clients_listing_handler(
 }
 
 #[derive(Template)]
-#[template(path = "pages/new_client.html")]
-struct NewClientTemplate {
+#[template(path = "pages/new_org.html")]
+struct NewOrgTemplate {
     t: TemplateData,
     action: String,
-    payload: ClientFormSubmitData,
+    payload: OrgFormSubmitData,
     error_message: Option<String>,
 }
 
 #[derive(Template)]
-#[template(path = "widgets/new_client_form.html")]
-struct ClientFormTemplate {
+#[template(path = "widgets/new_org_form.html")]
+struct OrgFormTemplate {
     action: String,
-    payload: ClientFormSubmitData,
+    payload: OrgFormSubmitData,
     error_message: Option<String>,
 }
 
-pub async fn new_client_handler(
+pub async fn new_org_handler(
     Extension(ctx): Extension<Ctx>,
     Extension(pref): Extension<Pref>,
     State(state): State<AppState>,
@@ -106,19 +106,18 @@ pub async fn new_client_handler(
     let config = state.config.clone();
     let actor = ctx.actor().expect("actor is required");
 
-    let _ = enforce_policy(actor, Resource::Client, Action::Create)?;
+    let _ = enforce_policy(actor, Resource::Org, Action::Create)?;
 
     let mut t = TemplateData::new(&state, Some(actor.clone()), &pref);
-    t.title = String::from("Create New Client");
+    t.title = String::from("Create New Org");
 
-    let token = create_csrf_token("new_client", &config.jwt_secret)?;
+    let token = create_csrf_token("new_org", &config.jwt_secret)?;
 
-    let tpl = NewClientTemplate {
+    let tpl = NewOrgTemplate {
         t,
-        action: "/clients/new".to_string(),
-        payload: ClientFormSubmitData {
+        action: "/orgs/new".to_string(),
+        payload: OrgFormSubmitData {
             name: "".to_string(),
-            active: Some("1".to_string()),
             token,
         },
         error_message: None,
@@ -130,23 +129,22 @@ pub async fn new_client_handler(
         .context(ResponseBuilderSnafu)?)
 }
 
-pub async fn post_new_client_handler(
+pub async fn post_new_org_handler(
     Extension(ctx): Extension<Ctx>,
     State(state): State<AppState>,
-    payload: Form<ClientFormSubmitData>,
+    payload: Form<OrgFormSubmitData>,
 ) -> Result<Response<Body>> {
     let config = state.config.clone();
     let actor = ctx.actor().expect("actor is required");
 
-    let _ = enforce_policy(actor, Resource::Client, Action::Create)?;
+    let _ = enforce_policy(actor, Resource::Org, Action::Create)?;
 
-    let token = create_csrf_token("new_client", &config.jwt_secret)?;
+    let token = create_csrf_token("new_org", &config.jwt_secret)?;
 
-    let mut tpl = ClientFormTemplate {
-        action: "/clients/new".to_string(),
+    let mut tpl = OrgFormTemplate {
+        action: "/orgs/new".to_string(),
         payload: ClientFormSubmitData {
             name: "".to_string(),
-            active: Some("1".to_string()),
             token,
         },
         error_message: None,
@@ -154,18 +152,17 @@ pub async fn post_new_client_handler(
 
     let status: StatusCode;
 
-    let payload = ClientFormSubmitData {
+    let payload = OrgFormSubmitData {
         name: payload.name.clone(),
-        active: payload.active.clone(),
         token: payload.token.clone(),
     };
 
     let token = ctx.token().expect("token is required");
-    let result = create_client(&config, token, &payload).await;
+    let result = create_org(&config, token, &payload).await;
 
     match result {
         Ok(_) => {
-            let next_url = "/clients".to_string();
+            let next_url = "/orgs".to_string();
             // Weird but can't do a redirect here, let htmx handle it
             return Ok(Response::builder()
                 .status(200)
@@ -181,7 +178,6 @@ pub async fn post_new_client_handler(
     }
 
     tpl.payload.name = payload.name.clone();
-    tpl.payload.active = payload.active.clone();
 
     // Will only arrive here on error
     Ok(Response::builder()
@@ -191,31 +187,31 @@ pub async fn post_new_client_handler(
 }
 
 #[derive(Template)]
-#[template(path = "pages/client.html")]
-struct ClientPageTemplate {
+#[template(path = "pages/org.html")]
+struct OrgPageTemplate {
     t: TemplateData,
-    client: ClientDto,
+    org: OrgDto,
     can_edit: bool,
     can_delete: bool,
     updated: bool,
 }
 
-pub async fn client_page_handler(
+pub async fn org_page_handler(
     Extension(ctx): Extension<Ctx>,
     Extension(pref): Extension<Pref>,
-    Extension(client): Extension<ClientDto>,
+    Extension(org): Extension<OrgDto>,
     State(state): State<AppState>,
 ) -> Result<Response<Body>> {
     let actor = ctx.actor().expect("actor is required");
     let mut t = TemplateData::new(&state, Some(actor.clone()), &pref);
 
-    t.title = format!("Client - {}", &client.name);
+    t.title = format!("Org - {}", &org.name);
 
-    let tpl = ClientPageTemplate {
+    let tpl = OrgPageTemplate {
         t,
-        client,
-        can_edit: actor.has_permissions(&vec![Permission::ClientsEdit]),
-        can_delete: actor.has_permissions(&vec![Permission::ClientsDelete]),
+        org,
+        can_edit: actor.has_permissions(&vec![Permission::OrgsEdit]),
+        can_delete: actor.has_permissions(&vec![Permission::OrgsDelete]),
         updated: false,
     };
 
@@ -226,33 +222,29 @@ pub async fn client_page_handler(
 }
 
 #[derive(Template)]
-#[template(path = "widgets/edit_client_form.html")]
-struct EditClientFormTemplate {
-    client: ClientDto,
-    payload: ClientFormSubmitData,
+#[template(path = "widgets/edit_org_form.html")]
+struct EditOrgFormTemplate {
+    org: OrgDto,
+    payload: OrgFormSubmitData,
     error_message: Option<String>,
 }
 
-pub async fn edit_client_handler(
+pub async fn edit_org_handler(
     Extension(ctx): Extension<Ctx>,
-    Extension(client): Extension<ClientDto>,
+    Extension(org): Extension<OrgDto>,
     State(state): State<AppState>,
 ) -> Result<Response<Body>> {
     let config = state.config.clone();
     let actor = ctx.actor().expect("actor is required");
 
-    let _ = enforce_policy(actor, Resource::Client, Action::Update)?;
+    let _ = enforce_policy(actor, Resource::Org, Action::Update)?;
 
-    let token = create_csrf_token(&client.id, &config.jwt_secret)?;
+    let token = create_csrf_token(&org.id, &config.jwt_secret)?;
 
-    let tpl = EditClientFormTemplate {
-        client: client.clone(),
-        payload: ClientFormSubmitData {
-            name: client.name,
-            active: match client.status.as_str() {
-                "active" => Some("1".to_string()),
-                _ => None,
-            },
+    let tpl = EditOrgFormTemplate {
+        org: org.clone(),
+        payload: OrgFormSubmitData {
+            name: org.name,
             token,
         },
         error_message: None,
@@ -264,24 +256,23 @@ pub async fn edit_client_handler(
         .context(ResponseBuilderSnafu)?)
 }
 
-pub async fn post_edit_client_handler(
+pub async fn post_edit_org_handler(
     Extension(ctx): Extension<Ctx>,
-    Extension(client): Extension<ClientDto>,
+    Extension(org): Extension<OrgDto>,
     State(state): State<AppState>,
-    payload: Form<ClientFormSubmitData>,
+    payload: Form<OrgFormSubmitData>,
 ) -> Result<Response<Body>> {
     let config = state.config.clone();
     let actor = ctx.actor().expect("actor is required");
 
-    let _ = enforce_policy(actor, Resource::Client, Action::Update)?;
+    let _ = enforce_policy(actor, Resource::Org, Action::Update)?;
 
-    let token = create_csrf_token(&client.id, &config.jwt_secret)?;
+    let token = create_csrf_token(&org.id, &config.jwt_secret)?;
 
-    let mut tpl = EditClientFormTemplate {
-        client: client.clone(),
-        payload: ClientFormSubmitData {
+    let mut tpl = EditOrgFormTemplate {
+        org: org.clone(),
+        payload: OrgFormSubmitData {
             name: "".to_string(),
-            active: Some("1".to_string()),
             token,
         },
         error_message: None,
@@ -289,23 +280,22 @@ pub async fn post_edit_client_handler(
 
     let status: StatusCode;
 
-    let payload = ClientFormSubmitData {
+    let payload = OrgFormSubmitData {
         name: payload.name.clone(),
-        active: payload.active.clone(),
         token: payload.token.clone(),
     };
 
     let token = ctx.token().expect("token is required");
-    let result = update_client(&config, token, &client.id, &payload).await;
+    let result = update_org(&config, token, &org.id, &payload).await;
 
     match result {
-        Ok(updated_client) => {
+        Ok(updated_org) => {
             // Render the controls back
-            let tpl = EditClientControlsTemplate {
-                client: updated_client,
+            let tpl = EditOrgsControlsTemplate {
+                org: updated_org,
                 updated: true,
-                can_edit: actor.has_permissions(&vec![Permission::ClientsEdit]),
-                can_delete: actor.has_permissions(&vec![Permission::ClientsDelete]),
+                can_edit: actor.has_permissions(&vec![Permission::OrgsEdit]),
+                can_delete: actor.has_permissions(&vec![Permission::OrgsDelete]),
             };
 
             Ok(Response::builder()
@@ -319,7 +309,6 @@ pub async fn post_edit_client_handler(
             tpl.error_message = Some(error_info.message);
 
             tpl.payload.name = payload.name.clone();
-            tpl.payload.active = payload.active.clone();
 
             Ok(Response::builder()
                 .status(status)
@@ -330,27 +319,27 @@ pub async fn post_edit_client_handler(
 }
 
 #[derive(Template)]
-#[template(path = "widgets/edit_client_controls.html")]
-struct EditClientControlsTemplate {
-    client: ClientDto,
+#[template(path = "widgets/edit_org_controls.html")]
+struct EditOrgsControlsTemplate {
+    org: OrgDto,
     updated: bool,
     can_edit: bool,
     can_delete: bool,
 }
 
-pub async fn edit_client_controls_handler(
+pub async fn edit_org_controls_handler(
     Extension(ctx): Extension<Ctx>,
-    Extension(client): Extension<ClientDto>,
+    Extension(org): Extension<OrgDto>,
 ) -> Result<Response<Body>> {
     let actor = ctx.actor().expect("actor is required");
 
-    let _ = enforce_policy(actor, Resource::Client, Action::Update)?;
+    let _ = enforce_policy(actor, Resource::Org, Action::Update)?;
 
-    let tpl = EditClientControlsTemplate {
-        client,
+    let tpl = EditOrgsControlsTemplate {
+        org,
         updated: false,
-        can_edit: actor.has_permissions(&vec![Permission::ClientsEdit]),
-        can_delete: actor.has_permissions(&vec![Permission::ClientsDelete]),
+        can_edit: actor.has_permissions(&vec![Permission::OrgsEdit]),
+        can_delete: actor.has_permissions(&vec![Permission::OrgsDelete]),
     };
 
     Ok(Response::builder()
@@ -360,27 +349,27 @@ pub async fn edit_client_controls_handler(
 }
 
 #[derive(Template)]
-#[template(path = "widgets/delete_client_form.html")]
-struct DeleteClientFormTemplate {
-    client: ClientDto,
+#[template(path = "widgets/delete_org_form.html")]
+struct DeleteOrgFormTemplate {
+    org: OrgDto,
     payload: TokenFormData,
     error_message: Option<String>,
 }
 
-pub async fn delete_client_handler(
+pub async fn delete_org_handler(
     Extension(ctx): Extension<Ctx>,
-    Extension(client): Extension<ClientDto>,
+    Extension(org): Extension<OrgDto>,
     State(state): State<AppState>,
 ) -> Result<Response<Body>> {
     let config = state.config.clone();
     let actor = ctx.actor().expect("actor is required");
 
-    let _ = enforce_policy(actor, Resource::Client, Action::Delete)?;
+    let _ = enforce_policy(actor, Resource::Org, Action::Delete)?;
 
-    let token = create_csrf_token(&client.id, &config.jwt_secret)?;
+    let token = create_csrf_token(&org.id, &config.jwt_secret)?;
 
-    let tpl = DeleteClientFormTemplate {
-        client: client.clone(),
+    let tpl = DeleteOrgFormTemplate {
+        org: org.clone(),
         payload: TokenFormData { token },
         error_message: None,
     };
@@ -391,21 +380,21 @@ pub async fn delete_client_handler(
         .context(ResponseBuilderSnafu)?)
 }
 
-pub async fn post_delete_client_handler(
+pub async fn post_delete_org_handler(
     Extension(ctx): Extension<Ctx>,
-    Extension(client): Extension<ClientDto>,
+    Extension(org): Extension<OrgDto>,
     State(state): State<AppState>,
     payload: Form<TokenFormData>,
 ) -> Result<Response<Body>> {
     let config = state.config.clone();
     let actor = ctx.actor().expect("actor is required");
 
-    let _ = enforce_policy(actor, Resource::Client, Action::Delete)?;
+    let _ = enforce_policy(actor, Resource::Org, Action::Delete)?;
 
-    let token = create_csrf_token(&client.id, &config.jwt_secret)?;
+    let token = create_csrf_token(&org.id, &config.jwt_secret)?;
 
-    let mut tpl = DeleteClientFormTemplate {
-        client: client.clone(),
+    let mut tpl = DeleteOrgFormTemplate {
+        org: org.clone(),
         payload: TokenFormData { token },
         error_message: None,
     };
@@ -413,13 +402,13 @@ pub async fn post_delete_client_handler(
     let status: StatusCode;
 
     let token = ctx.token().expect("token is required");
-    let result = delete_client(&config, token, &client.id, &payload.token).await;
+    let result = delete_org(&config, token, &org.id, &payload.token).await;
 
     match result {
         Ok(_) => {
             // Render same form but trigger a redirect to home
-            let tpl = DeleteClientFormTemplate {
-                client,
+            let tpl = DeleteOrgFormTemplate {
+                org,
                 payload: TokenFormData {
                     token: "".to_string(),
                 },
@@ -427,7 +416,7 @@ pub async fn post_delete_client_handler(
             };
             return Ok(Response::builder()
                 .status(200)
-                .header("HX-Redirect", "/clients")
+                .header("HX-Redirect", "/orgs")
                 .body(Body::from(tpl.render().context(TemplateSnafu)?))
                 .context(ResponseBuilderSnafu)?);
         }
@@ -444,14 +433,14 @@ pub async fn post_delete_client_handler(
     }
 }
 
-fn build_response(tpl: ClientsTemplate) -> Result<Response<Body>> {
+fn build_response(tpl: OrgsTemplate) -> Result<Response<Body>> {
     Ok(Response::builder()
         .status(200)
         .body(Body::from(tpl.render().context(TemplateSnafu)?))
         .context(ResponseBuilderSnafu)?)
 }
 
-fn build_error_response(mut tpl: ClientsTemplate, error: Error) -> Result<Response<Body>> {
+fn build_error_response(mut tpl: OrgsTemplate, error: Error) -> Result<Response<Body>> {
     let error_info = ErrorInfo::from(&error);
     tpl.error_message = Some(error_info.message);
 

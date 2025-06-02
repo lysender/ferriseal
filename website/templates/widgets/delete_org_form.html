@@ -1,8 +1,8 @@
 <form
     method="post"
-    action="/clients/{{ client.id }}/delete"
-    hx-post="/clients/{{ client.id }}/delete"
-    hx-target="#edit-client-container"
+    action="/orgs/{{ org.id }}/delete"
+    hx-post="/orgs/{{ org.id }}/delete"
+    hx-target="#edit-org-container"
 >
     <div class="columns">
         <div class="column is-half">
@@ -11,7 +11,7 @@
                     <div class="mb-5">
                         <article class="message is-danger">
                             <div class="message-header">
-                                <p>Unable to delete client</p>
+                                <p>Unable to delete org</p>
                             </div>
                             <div class="message-body">
                                 {{ msg }}
@@ -26,7 +26,7 @@
                     <p>Warning</p>
                 </div>
                 <div class="message-body">
-                    <p>Are you sure you want to delete the client <strong>{{ client.name }}</strong>?</p>
+                    <p>Are you sure you want to delete the org <strong>{{ org.name }}</strong>?</p>
 
                     <div class="mt-5 field is-grouped">
                         <div class="control">
@@ -36,8 +36,8 @@
                         <div class="control">
                             <button
                                 class="button is-link is-light"
-                                hx-get="/clients/{{ client.id }}/edit_controls"
-                                hx-target="#edit-client-container"
+                                hx-get="/orgs/{{ org.id }}/edit_controls"
+                                hx-target="#edit-org-container"
                             >
                                 Cancel
                             </button>

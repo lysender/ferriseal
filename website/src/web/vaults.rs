@@ -1,12 +1,12 @@
 use askama::Template;
 use axum::{Extension, Form, body::Body, extract::State, response::Response};
-use memo::bucket::BucketDto;
-use memo::client::ClientDto;
-use memo::role::Permission;
+use dto::org::OrgDto;
+use dto::role::Permission;
+use dto::vault::VaultDto;
 use snafu::ResultExt;
 
 use crate::models::tokens::TokenFormData;
-use crate::services::vault::{NewBucketFormData, create_bucket, delete_bucket, list_buckets};
+use crate::services::vaults::{NewVaultFormData, create_vault, delete_vault, list_vaults};
 use crate::{
     Result,
     ctx::Ctx,
@@ -18,29 +18,29 @@ use crate::{
 };
 
 #[derive(Template)]
-#[template(path = "pages/buckets.html")]
-struct BucketsPageTemplate {
+#[template(path = "pages/vaults.html")]
+struct VaultsPageTemplate {
     t: TemplateData,
-    client: ClientDto,
-    buckets: Vec<BucketDto>,
+    org: OrgDto,
+    vaults: Vec<VaultDto>,
 }
 
-pub async fn buckets_handler(
+pub async fn vaults_handler(
     Extension(ctx): Extension<Ctx>,
     Extension(pref): Extension<Pref>,
-    Extension(client): Extension<ClientDto>,
+    Extension(org): Extension<OrgDto>,
     State(state): State<AppState>,
 ) -> Result<Response<Body>> {
     let actor = ctx.actor().expect("actor is required");
-    let _ = enforce_policy(actor, Resource::Bucket, Action::Read)?;
+    let _ = enforce_policy(actor, Resource::Vault, Action::Read)?;
 
     let mut t = TemplateData::new(&state, Some(actor.clone()), &pref);
-    t.title = String::from("Buckets");
+    t.title = String::from("Vaults");
 
     let token = ctx.token().expect("token is required");
-    let buckets = list_buckets(state.config.api_url.as_str(), token, client.id.as_str()).await?;
+    let vaults = list_vaults(state.config.api_url.as_str(), token, org.id.as_str()).await?;
 
-    let tpl = BucketsPageTemplate { t, client, buckets };
+    let tpl = VaultsPageTemplate { t, org, vaults };
 
     Ok(Response::builder()
         .status(200)
@@ -49,44 +49,44 @@ pub async fn buckets_handler(
 }
 
 #[derive(Template)]
-#[template(path = "pages/new_bucket.html")]
-struct NewBucketTemplate {
+#[template(path = "pages/new_vault.html")]
+struct NewVaultTemplate {
     t: TemplateData,
-    client: ClientDto,
-    payload: NewBucketFormData,
+    org: OrgDto,
+    payload: NewVaultFormData,
     error_message: Option<String>,
 }
 
 #[derive(Template)]
-#[template(path = "widgets/new_bucket_form.html")]
-struct NewBucketFormTemplate {
-    client: ClientDto,
-    payload: NewBucketFormData,
+#[template(path = "widgets/new_vault_form.html")]
+struct NewVaultFormTemplate {
+    org: OrgDto,
+    payload: NewVaultFormData,
     error_message: Option<String>,
 }
 
-pub async fn new_bucket_handler(
+pub async fn new_vault_handler(
     Extension(ctx): Extension<Ctx>,
     Extension(pref): Extension<Pref>,
-    Extension(client): Extension<ClientDto>,
+    Extension(org): Extension<OrgDto>,
     State(state): State<AppState>,
 ) -> Result<Response<Body>> {
     let config = state.config.clone();
     let actor = ctx.actor().expect("actor is required");
 
-    let _ = enforce_policy(actor, Resource::Bucket, Action::Create)?;
+    let _ = enforce_policy(actor, Resource::Vault, Action::Create)?;
 
     let mut t = TemplateData::new(&state, Some(actor.clone()), &pref);
-    t.title = String::from("Create New Bucket");
+    t.title = String::from("Create New Vault");
 
-    let token = create_csrf_token("new_bucket", &config.jwt_secret)?;
+    let token = create_csrf_token("new_vault", &config.jwt_secret)?;
 
-    let tpl = NewBucketTemplate {
+    let tpl = NewVaultTemplate {
         t,
-        client,
-        payload: NewBucketFormData {
+        org,
+        payload: NewVaultFormData {
             name: "".to_string(),
-            images_only: None,
+            test_cipher: "".to_string(),
             token,
         },
         error_message: None,
@@ -98,42 +98,42 @@ pub async fn new_bucket_handler(
         .context(ResponseBuilderSnafu)?)
 }
 
-pub async fn post_new_bucket_handler(
+pub async fn post_new_vault_handler(
     Extension(ctx): Extension<Ctx>,
-    Extension(client): Extension<ClientDto>,
+    Extension(org): Extension<OrgDto>,
     State(state): State<AppState>,
-    payload: Form<NewBucketFormData>,
+    payload: Form<NewVaultFormData>,
 ) -> Result<Response<Body>> {
     let config = state.config.clone();
     let actor = ctx.actor().expect("actor is required");
 
-    let _ = enforce_policy(actor, Resource::Bucket, Action::Create)?;
+    let _ = enforce_policy(actor, Resource::Vault, Action::Create)?;
 
-    let token = create_csrf_token("new_bucket", &config.jwt_secret)?;
-    let cid = client.id.clone();
+    let token = create_csrf_token("new_vault", &config.jwt_secret)?;
+    let oid = org.id.clone();
 
-    let mut tpl = NewBucketFormTemplate {
-        client,
-        payload: NewBucketFormData {
+    let mut tpl = NewVaultFormTemplate {
+        org,
+        payload: NewVaultFormData {
             name: "".to_string(),
-            images_only: None,
+            test_cipher: "".to_string(),
             token,
         },
         error_message: None,
     };
 
-    let bucket = NewBucketFormData {
+    let vault = NewVaultFormData {
         name: payload.name.clone(),
-        images_only: payload.images_only.clone(),
+        test_cipher: payload.test_cipher.clone(),
         token: payload.token.clone(),
     };
 
     let token = ctx.token().expect("token is required");
-    let result = create_bucket(&config, token, cid.as_str(), &bucket).await;
+    let result = create_vault(&config, token, oid.as_str(), &vault).await;
 
     match result {
         Ok(_) => {
-            let next_url = format!("/clients/{}/buckets", cid.as_str());
+            let next_url = format!("/orgs/{}/vaults", oid.as_str());
             // Weird but can't do a redirect here, let htmx handle it
             Ok(Response::builder()
                 .status(200)
@@ -146,7 +146,7 @@ pub async fn post_new_bucket_handler(
             tpl.error_message = Some(error_info.message);
 
             tpl.payload.name = payload.name.clone();
-            tpl.payload.images_only = payload.images_only.clone();
+            tpl.payload.test_cipher = payload.test_cipher.clone();
 
             // Will only arrive here on error
             Ok(Response::builder()
@@ -158,31 +158,31 @@ pub async fn post_new_bucket_handler(
 }
 
 #[derive(Template)]
-#[template(path = "pages/bucket.html")]
-struct BucketPageTemplate {
+#[template(path = "pages/vault.html")]
+struct VaultPageTemplate {
     t: TemplateData,
-    client: ClientDto,
-    bucket: BucketDto,
+    org: OrgDto,
+    vault: VaultDto,
     can_delete: bool,
 }
 
-pub async fn bucket_page_handler(
+pub async fn vault_page_handler(
     Extension(ctx): Extension<Ctx>,
     Extension(pref): Extension<Pref>,
-    Extension(client): Extension<ClientDto>,
-    Extension(bucket): Extension<BucketDto>,
+    Extension(org): Extension<OrgDto>,
+    Extension(vault): Extension<VaultDto>,
     State(state): State<AppState>,
 ) -> Result<Response<Body>> {
     let actor = ctx.actor().expect("actor is required");
     let mut t = TemplateData::new(&state, Some(actor.clone()), &pref);
 
-    t.title = format!("Bucket - {}", &bucket.name);
+    t.title = format!("Vault - {}", &vault.name);
 
-    let tpl = BucketPageTemplate {
+    let tpl = VaultPageTemplate {
         t,
-        client,
-        bucket,
-        can_delete: actor.has_permissions(&vec![Permission::BucketsDelete]),
+        org,
+        vault,
+        can_delete: actor.has_permissions(&vec![Permission::VaultsDelete]),
     };
 
     Ok(Response::builder()
@@ -192,26 +192,26 @@ pub async fn bucket_page_handler(
 }
 
 #[derive(Template)]
-#[template(path = "widgets/edit_bucket_controls.html")]
-struct BucketControlsTemplate {
-    client: ClientDto,
-    bucket: BucketDto,
+#[template(path = "widgets/edit_vault_controls.html")]
+struct VaultControlsTemplate {
+    org: OrgDto,
+    vault: VaultDto,
     can_delete: bool,
 }
 
-pub async fn bucket_controls_handler(
+pub async fn vault_controls_handler(
     Extension(ctx): Extension<Ctx>,
-    Extension(client): Extension<ClientDto>,
-    Extension(bucket): Extension<BucketDto>,
+    Extension(org): Extension<OrgDto>,
+    Extension(vault): Extension<VaultDto>,
 ) -> Result<Response<Body>> {
     let actor = ctx.actor().expect("actor is required");
 
-    let _ = enforce_policy(actor, Resource::Bucket, Action::Update)?;
+    let _ = enforce_policy(actor, Resource::Vault, Action::Update)?;
 
-    let tpl = BucketControlsTemplate {
-        client,
-        bucket,
-        can_delete: actor.has_permissions(&vec![Permission::BucketsDelete]),
+    let tpl = VaultControlsTemplate {
+        org,
+        vault,
+        can_delete: actor.has_permissions(&vec![Permission::VaultsDelete]),
     };
 
     Ok(Response::builder()
@@ -222,30 +222,30 @@ pub async fn bucket_controls_handler(
 }
 
 #[derive(Template)]
-#[template(path = "widgets/delete_bucket_form.html")]
-struct DeleteBucketFormTemplate {
-    client: ClientDto,
-    bucket: BucketDto,
+#[template(path = "widgets/delete_vault_form.html")]
+struct DeleteVaultFormTemplate {
+    org: OrgDto,
+    vault: VaultDto,
     payload: TokenFormData,
     error_message: Option<String>,
 }
 
-pub async fn delete_bucket_handler(
+pub async fn delete_vault_handler(
     Extension(ctx): Extension<Ctx>,
-    Extension(client): Extension<ClientDto>,
-    Extension(bucket): Extension<BucketDto>,
+    Extension(org): Extension<OrgDto>,
+    Extension(vault): Extension<VaultDto>,
     State(state): State<AppState>,
 ) -> Result<Response<Body>> {
     let config = state.config.clone();
     let actor = ctx.actor().expect("actor is required");
 
-    let _ = enforce_policy(actor, Resource::Bucket, Action::Delete)?;
+    let _ = enforce_policy(actor, Resource::Vault, Action::Delete)?;
 
-    let token = create_csrf_token(&bucket.id, &config.jwt_secret)?;
+    let token = create_csrf_token(&vault.id, &config.jwt_secret)?;
 
-    let tpl = DeleteBucketFormTemplate {
-        client,
-        bucket,
+    let tpl = DeleteVaultFormTemplate {
+        org,
+        vault,
         payload: TokenFormData { token },
         error_message: None,
     };
@@ -256,37 +256,37 @@ pub async fn delete_bucket_handler(
         .context(ResponseBuilderSnafu)?)
 }
 
-pub async fn post_delete_bucket_handler(
+pub async fn post_delete_vault_handler(
     Extension(ctx): Extension<Ctx>,
-    Extension(client): Extension<ClientDto>,
-    Extension(bucket): Extension<BucketDto>,
+    Extension(org): Extension<OrgDto>,
+    Extension(vault): Extension<VaultDto>,
     State(state): State<AppState>,
     payload: Form<TokenFormData>,
 ) -> Result<Response<Body>> {
     let config = state.config.clone();
     let actor = ctx.actor().expect("actor is required");
 
-    let _ = enforce_policy(actor, Resource::Bucket, Action::Delete)?;
+    let _ = enforce_policy(actor, Resource::Vault, Action::Delete)?;
 
-    let token = create_csrf_token(&bucket.id, &config.jwt_secret)?;
+    let token = create_csrf_token(&vault.id, &config.jwt_secret)?;
 
-    let mut tpl = DeleteBucketFormTemplate {
-        client: client.clone(),
-        bucket: bucket.clone(),
+    let mut tpl = DeleteVaultFormTemplate {
+        org: org.clone(),
+        vault: vault.clone(),
         payload: TokenFormData { token },
         error_message: None,
     };
 
     let token = ctx.token().expect("token is required");
-    let result = delete_bucket(&config, token, &client.id, &bucket.id, &payload.token).await;
+    let result = delete_vault(&config, token, &org.id, &vault.id, &payload.token).await;
 
     match result {
         Ok(_) => {
             // Render same form but trigger a redirect to home
-            let cid = client.id.clone();
-            let tpl = DeleteBucketFormTemplate {
-                client,
-                bucket,
+            let oid = org.id.clone();
+            let tpl = DeleteVaultFormTemplate {
+                org,
+                vault,
                 payload: TokenFormData {
                     token: "".to_string(),
                 },
@@ -294,7 +294,7 @@ pub async fn post_delete_bucket_handler(
             };
             return Ok(Response::builder()
                 .status(200)
-                .header("HX-Redirect", format!("/clients/{}/buckets", &cid))
+                .header("HX-Redirect", format!("/orgs/{}/vaults", &oid))
                 .body(Body::from(tpl.render().context(TemplateSnafu)?))
                 .context(ResponseBuilderSnafu)?);
         }

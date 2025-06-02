@@ -8,18 +8,18 @@
     {% when None %}
 {% endmatch %}
 
-<a class="panel-block has-text-primary" href="/clients/new">
+<a class="panel-block has-text-primary" href="/orgs/new">
     <span class="panel-icon">
         <i class="fas fa-plus has-text-primary" aria-hidden="true"></i>
     </span>
-    Create new client
+    Create new org
 </a>
 
-{% for client in clients %}
-    <a class="panel-block" href="/clients/{{ client.id }}">
+{% for org in orgs %}
+    <a class="panel-block" href="/orgs/{{ org.id }}">
         <span class="panel-icon">
             <i class="fas fa-book" aria-hidden="true"></i>
         </span>
-        {{ client.name }}
+        {{ org.name }}
     </a>
 {% endfor %}

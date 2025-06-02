@@ -5,27 +5,22 @@ use axum::{
     response::{IntoResponse, Redirect, Response},
 };
 use axum_extra::extract::CookieJar;
-use memo::bucket::BucketDto;
 use snafu::ensure;
 
 use crate::{
     Error, Result,
     ctx::{Ctx, CtxValue},
     error::{ErrorInfo, ForbiddenSnafu},
-    models::{
-        BucketParams, ClientParams, MyBucketParams, MyDirParams, MyFileParams, Pref, UserParams,
-    },
+    models::{MyEntriesParams, MyVaultParams, OrgParams, Pref, UserParams},
     run::AppState,
     services::{
-        auth::authenticate_token,
-        dirs::{Dir, get_dir},
-        entries::get_photo,
-        orgs::get_org,
-        users::get_user,
-        vault::get_bucket,
+        auth::authenticate_token, entries::get_entry, orgs::get_org, users::get_user,
+        vaults::get_vault,
     },
     web::{Action, Resource, enforce_policy, handle_error},
 };
+use dto::entry::EntryDto;
+use dto::vault::VaultDto;
 
 use super::{AUTH_TOKEN_COOKIE, THEME_COOKIE};
 

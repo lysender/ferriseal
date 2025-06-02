@@ -1,8 +1,8 @@
 <form
     method="post"
-    action="/clients/{{ client.id }}/buckets/{{ bucket.id }}/delete"
-    hx-post="/clients/{{ client.id }}/buckets/{{ bucket.id }}/delete"
-    hx-target="#edit-bucket-container"
+    action="/orgs/{{ org.id }}/vaults/{{ vault.id }}/delete"
+    hx-post="/orgs/{{ org.id }}/vaults/{{ vault.id }}/delete"
+    hx-target="#edit-vault-container"
 >
     <div class="columns">
         <div class="column is-half">
@@ -11,7 +11,7 @@
                     <div class="mb-5">
                         <article class="message is-danger">
                             <div class="message-header">
-                                <p>Unable to delete bucket</p>
+                                <p>Unable to delete vault</p>
                             </div>
                             <div class="message-body">
                                 {{ msg }}
@@ -26,7 +26,7 @@
                     <p>Warning</p>
                 </div>
                 <div class="message-body">
-                    <p>Are you sure you want to delete the bucket <strong>{{ bucket.name }}</strong>?</p>
+                    <p>Are you sure you want to delete the vault <strong>{{ vault.name }}</strong>?</p>
 
                     <div class="mt-5 field is-grouped">
                         <div class="control">
@@ -36,8 +36,8 @@
                         <div class="control">
                             <button
                                 class="button is-link is-light"
-                                hx-get="/clients/{{ client.id }}/buckets/{{ bucket.id }}/edit_controls"
-                                hx-target="#edit-bucket-container"
+                                hx-get="/orgs/{{ org.id }}/vaults/{{ vault.id }}/edit_controls"
+                                hx-target="#edit-vault-container"
                             >
                                 Cancel
                             </button>
