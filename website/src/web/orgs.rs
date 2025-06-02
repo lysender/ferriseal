@@ -143,7 +143,7 @@ pub async fn post_new_org_handler(
 
     let mut tpl = OrgFormTemplate {
         action: "/orgs/new".to_string(),
-        payload: ClientFormSubmitData {
+        payload: OrgFormSubmitData {
             name: "".to_string(),
             token,
         },

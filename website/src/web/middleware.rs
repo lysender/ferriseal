@@ -11,7 +11,7 @@ use crate::{
     Error, Result,
     ctx::{Ctx, CtxValue},
     error::{ErrorInfo, ForbiddenSnafu},
-    models::{MyEntriesParams, MyVaultParams, OrgParams, Pref, UserParams},
+    models::{MyEntryParams, MyVaultParams, OrgParams, Pref, UserParams, VaultParams},
     run::AppState,
     services::{
         auth::authenticate_token, entries::get_entry, orgs::get_org, users::get_user,
@@ -19,7 +19,6 @@ use crate::{
     },
     web::{Action, Resource, enforce_policy, handle_error},
 };
-use dto::entry::EntryDto;
 use dto::vault::VaultDto;
 
 use super::{AUTH_TOKEN_COOKIE, THEME_COOKIE};
@@ -82,83 +81,55 @@ pub async fn require_auth_middleware(
     Ok(next.run(req).await)
 }
 
-pub async fn dir_middleware(
+pub async fn entry_middleware(
     Extension(ctx): Extension<Ctx>,
-    Extension(bucket): Extension<BucketDto>,
+    Extension(vault): Extension<VaultDto>,
     State(state): State<AppState>,
-    Path(params): Path<MyDirParams>,
+    Path(params): Path<MyEntryParams>,
     mut req: Request,
     next: Next,
 ) -> Result<Response> {
     let actor = ctx.actor().expect("actor is required");
-    let _ = enforce_policy(actor, Resource::Album, Action::Read)?;
+    let _ = enforce_policy(actor, Resource::Entry, Action::Read)?;
 
     let token = ctx.token().expect("token is required");
-    let dir = get_dir(
+    let entry = get_entry(
         &state.config.api_url,
         token,
-        &bucket.client_id,
-        &bucket.id,
-        &params.dir_id,
+        &vault.org_id,
+        &vault.id,
+        &params.entry_id,
     )
     .await?;
 
-    req.extensions_mut().insert(dir);
+    req.extensions_mut().insert(entry);
     Ok(next.run(req).await)
 }
 
-pub async fn file_middleware(
+pub async fn org_middleware(
     State(state): State<AppState>,
     Extension(ctx): Extension<Ctx>,
-    Extension(bucket): Extension<BucketDto>,
-    Extension(dir): Extension<Dir>,
-    Path(params): Path<MyFileParams>,
+    Path(params): Path<OrgParams>,
     mut req: Request,
     next: Next,
 ) -> Result<Response> {
     let actor = ctx.actor().expect("actor is required");
-    let _ = enforce_policy(actor, Resource::Photo, Action::Read)?;
+    let _ = enforce_policy(actor, Resource::Org, Action::Read)?;
 
-    let token = ctx.token().expect("token is required");
-    let config = state.config.clone();
-    let photo = get_photo(
-        &config.api_url,
-        token,
-        &bucket.client_id,
-        &bucket.id,
-        &dir.id,
-        &params.file_id,
-    )
-    .await?;
-
-    req.extensions_mut().insert(photo);
-    Ok(next.run(req).await)
-}
-
-pub async fn client_middleware(
-    State(state): State<AppState>,
-    Extension(ctx): Extension<Ctx>,
-    Path(params): Path<ClientParams>,
-    mut req: Request,
-    next: Next,
-) -> Result<Response> {
-    let actor = ctx.actor().expect("actor is required");
-    let _ = enforce_policy(actor, Resource::Client, Action::Read)?;
-
-    // Regular users cannot view clients admin pages
+    // Regular users cannot view orgs admin pages
     ensure!(
         actor.is_system_admin(),
         ForbiddenSnafu {
-            msg: "Client pages require system admin privileges"
+            msg: "Org pages require system admin privileges"
         }
     );
 
     let token = ctx.token().expect("token is required");
     let config = state.config.clone();
 
-    let client = get_org(&config.api_url, token, &params.client_id).await?;
+    let org = get_org(&config.api_url, token, &params.org_id).await?;
 
-    req.extensions_mut().insert(client);
+    req.extensions_mut().insert(org);
     Ok(next.run(req).await)
 }
 
@@ -175,47 +146,47 @@ pub async fn user_middleware(
     let token = ctx.token().expect("token is required");
     let config = state.config.clone();
 
-    let user = get_user(&config.api_url, token, &params.client_id, &params.user_id).await?;
+    let user = get_user(&config.api_url, token, &params.org_id, &params.user_id).await?;
 
     req.extensions_mut().insert(user);
     Ok(next.run(req).await)
 }
 
-pub async fn bucket_middleware(
+pub async fn vault_middleware(
     State(state): State<AppState>,
     Extension(ctx): Extension<Ctx>,
-    Path(params): Path<BucketParams>,
+    Path(params): Path<VaultParams>,
     mut req: Request,
     next: Next,
 ) -> Result<Response> {
     let actor = ctx.actor().expect("actor is required");
-    let _ = enforce_policy(actor, Resource::Bucket, Action::Read)?;
+    let _ = enforce_policy(actor, Resource::Vault, Action::Read)?;
 
     let token = ctx.token().expect("token is required");
     let config = state.config.clone();
 
-    let bucket = get_bucket(&config.api_url, token, &params.client_id, &params.bucket_id).await?;
+    let vault = get_vault(&config.api_url, token, &params.org_id, &params.vault_id).await?;
 
-    req.extensions_mut().insert(bucket);
+    req.extensions_mut().insert(vault);
     Ok(next.run(req).await)
 }
 
-pub async fn my_bucket_middleware(
+pub async fn my_vault_middleware(
     State(state): State<AppState>,
     Extension(ctx): Extension<Ctx>,
-    Path(params): Path<MyBucketParams>,
+    Path(params): Path<MyVaultParams>,
     mut req: Request,
     next: Next,
 ) -> Result<Response> {
     let actor = ctx.actor().expect("actor is required");
-    let _ = enforce_policy(actor, Resource::Bucket, Action::Read)?;
+    let _ = enforce_policy(actor, Resource::Vault, Action::Read)?;
 
     let token = ctx.token().expect("token is required");
     let config = state.config.clone();
 
-    let bucket = get_bucket(&config.api_url, token, &actor.client_id, &params.bucket_id).await?;
+    let vault = get_vault(&config.api_url, token, &actor.org_id, &params.vault_id).await?;
 
-    req.extensions_mut().insert(bucket);
+    req.extensions_mut().insert(vault);
     Ok(next.run(req).await)
 }
 

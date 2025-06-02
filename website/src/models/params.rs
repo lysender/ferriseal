@@ -26,7 +26,7 @@ pub struct MyVaultParams {
 }
 
 #[derive(Deserialize)]
-pub struct MyEntriesParams {
+pub struct MyEntryParams {
     #[allow(dead_code)]
     pub vault_id: String,
 
