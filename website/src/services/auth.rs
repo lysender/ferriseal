@@ -7,7 +7,7 @@ use crate::{
     Error, Result,
     error::{HttpClientSnafu, HttpResponseParseSnafu},
 };
-use memo::actor::Actor;
+use dto::actor::Actor;
 
 #[derive(Serialize)]
 pub struct AuthPayload {

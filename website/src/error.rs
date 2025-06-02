@@ -169,14 +169,23 @@ pub enum Error {
     #[snafu(display("File not found"))]
     FileNotFound,
 
+    #[snafu(display("Entry not found"))]
+    EntryNotFound,
+
     #[snafu(display("Album not found"))]
     AlbumNotFound,
 
     #[snafu(display("Bucket not found"))]
     BucketNotFound,
 
+    #[snafu(display("Vault not found"))]
+    VaultNotFound,
+
     #[snafu(display("Client not found"))]
     ClientNotFound,
+
+    #[snafu(display("Org not found"))]
+    OrgNotFound,
 
     #[snafu(display("Stale form data. Refresh the page and try again."))]
     CsrfToken,

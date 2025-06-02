@@ -13,7 +13,7 @@ use crate::{
     ctx::Ctx,
     error::{ResponseBuilderSnafu, TemplateSnafu},
     models::TemplateData,
-    services::buckets::list_buckets,
+    services::vault::list_buckets,
 };
 use crate::{models::Pref, run::AppState};
 

@@ -11,7 +11,7 @@ use snafu::ResultExt;
 use crate::models::tokens::TokenFormData;
 use crate::models::{ListFilesParams, UploadParams};
 use crate::services::dirs::Dir;
-use crate::services::files::{Photo, delete_photo, list_files, upload_photo};
+use crate::services::entries::{Photo, delete_photo, list_files, upload_photo};
 use crate::{
     Error, Result,
     ctx::Ctx,

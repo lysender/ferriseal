@@ -4,48 +4,37 @@ use urlencoding::encode;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
-pub struct ClientParams {
-    pub client_id: String,
+pub struct OrgParams {
+    pub org_id: String,
 }
 
 #[derive(Deserialize)]
 pub struct UserParams {
-    pub client_id: String,
+    pub org_id: String,
     pub user_id: String,
 }
 
 #[derive(Deserialize)]
-pub struct BucketParams {
-    pub client_id: String,
-    pub bucket_id: String,
+pub struct VaultParams {
+    pub org_id: String,
+    pub vault_id: String,
 }
 
 #[derive(Deserialize)]
-pub struct MyBucketParams {
-    pub bucket_id: String,
+pub struct MyVaultParams {
+    pub vault_id: String,
 }
 
 #[derive(Deserialize)]
-pub struct MyDirParams {
+pub struct MyEntriesParams {
     #[allow(dead_code)]
-    pub bucket_id: String,
+    pub vault_id: String,
 
-    pub dir_id: String,
+    pub entry_id: String,
 }
 
 #[derive(Deserialize)]
-pub struct MyFileParams {
-    #[allow(dead_code)]
-    pub bucket_id: String,
-
-    #[allow(dead_code)]
-    pub dir_id: String,
-
-    pub file_id: String,
-}
-
-#[derive(Deserialize)]
-pub struct ListDirsParams {
+pub struct ListEntriesParams {
     pub keyword: Option<String>,
     pub page: Option<u32>,
     pub per_page: Option<u32>,
@@ -56,12 +45,7 @@ pub struct UploadParams {
     pub token: Option<String>,
 }
 
-#[derive(Deserialize)]
-pub struct ListFilesParams {
-    pub page: Option<u32>,
-}
-
-impl Default for ListDirsParams {
+impl Default for ListEntriesParams {
     fn default() -> Self {
         Self {
             keyword: None,
@@ -71,7 +55,7 @@ impl Default for ListDirsParams {
     }
 }
 
-impl fmt::Display for ListDirsParams {
+impl fmt::Display for ListEntriesParams {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Ideally, we want an empty string if all fields are None
         if self.keyword.is_none() && self.page.is_none() && self.per_page.is_none() {

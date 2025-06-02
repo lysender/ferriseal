@@ -1,18 +1,18 @@
-pub mod buckets;
-pub mod clients;
 pub mod dirs;
+pub mod entries;
 pub mod error;
-pub mod files;
 pub mod index;
 pub mod login;
 pub mod logout;
 pub mod middleware;
 pub mod my_bucket;
+pub mod orgs;
 pub mod policies;
 pub mod pref;
 pub mod profile;
 pub mod routes;
 pub mod users;
+pub mod vaults;
 
 pub const AUTH_TOKEN_COOKIE: &str = "auth_token";
 pub const THEME_COOKIE: &str = "theme";

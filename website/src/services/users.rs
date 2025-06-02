@@ -1,4 +1,3 @@
-use memo::user::UserDto;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, ensure};
@@ -7,6 +6,7 @@ use crate::config::Config;
 use crate::error::{CsrfTokenSnafu, HttpClientSnafu, HttpResponseParseSnafu, ValidationSnafu};
 use crate::services::token::verify_csrf_token;
 use crate::{Error, Result};
+use dto::user::UserDto;
 
 use super::handle_response_error;
 
@@ -75,8 +75,8 @@ pub struct ChangePasswordData {
     pub new_password: String,
 }
 
-pub async fn list_users(api_url: &str, token: &str, client_id: &str) -> Result<Vec<UserDto>> {
-    let url = format!("{}/clients/{}/users", api_url, client_id);
+pub async fn list_users(api_url: &str, token: &str, org_id: &str) -> Result<Vec<UserDto>> {
+    let url = format!("{}/orgs/{}/users", api_url, org_id);
 
     let response = Client::new()
         .get(url)
@@ -104,7 +104,7 @@ pub async fn list_users(api_url: &str, token: &str, client_id: &str) -> Result<V
 pub async fn create_user(
     config: &Config,
     token: &str,
-    client_id: &str,
+    org_id: &str,
     form: &NewUserFormData,
 ) -> Result<UserDto> {
     let csrf_result = verify_csrf_token(&form.token, &config.jwt_secret)?;
@@ -117,7 +117,7 @@ pub async fn create_user(
         }
     );
 
-    let url = format!("{}/clients/{}/users", &config.api_url, client_id);
+    let url = format!("{}/orgs/{}/users", &config.api_url, org_id);
 
     let data = NewUserData {
         username: form.username.clone(),
@@ -150,13 +150,8 @@ pub async fn create_user(
     Ok(user)
 }
 
-pub async fn get_user(
-    api_url: &str,
-    token: &str,
-    client_id: &str,
-    user_id: &str,
-) -> Result<UserDto> {
-    let url = format!("{}/clients/{}/users/{}", api_url, client_id, user_id);
+pub async fn get_user(api_url: &str, token: &str, org_id: &str, user_id: &str) -> Result<UserDto> {
+    let url = format!("{}/orgs/{}/users/{}", api_url, org_id, user_id);
     let response = Client::new()
         .get(url)
         .bearer_auth(token)
@@ -183,7 +178,7 @@ pub async fn get_user(
 pub async fn update_user_status(
     config: &Config,
     token: &str,
-    client_id: &str,
+    org_id: &str,
     user_id: &str,
     form: &UserActiveFormData,
 ) -> Result<UserDto> {
@@ -191,8 +186,8 @@ pub async fn update_user_status(
     ensure!(&csrf_result == user_id, CsrfTokenSnafu);
 
     let url = format!(
-        "{}/clients/{}/users/{}/update_status",
-        &config.api_url, client_id, user_id
+        "{}/orgs/{}/users/{}/update_status",
+        &config.api_url, org_id, user_id
     );
     let data = UserStatusData {
         status: match form.active {
@@ -227,7 +222,7 @@ pub async fn update_user_status(
 pub async fn update_user_roles(
     config: &Config,
     token: &str,
-    client_id: &str,
+    org_id: &str,
     user_id: &str,
     form: &UserRoleFormData,
 ) -> Result<UserDto> {
@@ -235,8 +230,8 @@ pub async fn update_user_roles(
     ensure!(&csrf_result == user_id, CsrfTokenSnafu);
 
     let url = format!(
-        "{}/clients/{}/users/{}/update_roles",
-        &config.api_url, client_id, user_id
+        "{}/orgs/{}/users/{}/update_roles",
+        &config.api_url, org_id, user_id
     );
     let data = UserRolesData {
         roles: form.role.clone(),
@@ -269,7 +264,7 @@ pub async fn update_user_roles(
 pub async fn reset_user_password(
     config: &Config,
     token: &str,
-    client_id: &str,
+    org_id: &str,
     user_id: &str,
     form: &ResetPasswordFormData,
 ) -> Result<UserDto> {
@@ -284,8 +279,8 @@ pub async fn reset_user_password(
     );
 
     let url = format!(
-        "{}/clients/{}/users/{}/reset_password",
-        &config.api_url, client_id, user_id
+        "{}/orgs/{}/users/{}/reset_password",
+        &config.api_url, org_id, user_id
     );
 
     let data = ResetPasswordData {
@@ -359,17 +354,13 @@ pub async fn change_user_password(
 pub async fn delete_user(
     config: &Config,
     token: &str,
-    client_id: &str,
+    org_id: &str,
     user_id: &str,
     csrf_token: &str,
 ) -> Result<()> {
     let csrf_result = verify_csrf_token(&csrf_token, &config.jwt_secret)?;
     ensure!(csrf_result == user_id, CsrfTokenSnafu);
-    let url = format!(
-        "{}/clients/{}/users/{}",
-        &config.api_url, client_id, user_id,
-    );
-    println!("{}", &url);
+    let url = format!("{}/orgs/{}/users/{}", &config.api_url, org_id, user_id,);
     let response = Client::new()
         .delete(url)
         .bearer_auth(token)

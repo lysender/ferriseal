@@ -18,11 +18,11 @@ use crate::{
     run::AppState,
     services::{
         auth::authenticate_token,
-        buckets::get_bucket,
-        clients::get_client,
         dirs::{Dir, get_dir},
-        files::get_photo,
+        entries::get_photo,
+        orgs::get_org,
         users::get_user,
+        vault::get_bucket,
     },
     web::{Action, Resource, enforce_policy, handle_error},
 };
@@ -161,7 +161,7 @@ pub async fn client_middleware(
     let token = ctx.token().expect("token is required");
     let config = state.config.clone();
 
-    let client = get_client(&config.api_url, token, &params.client_id).await?;
+    let client = get_org(&config.api_url, token, &params.client_id).await?;
 
     req.extensions_mut().insert(client);
     Ok(next.run(req).await)

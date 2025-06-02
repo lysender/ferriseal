@@ -1,7 +1,7 @@
 use crate::{config::AssetManifest, run::AppState};
 
 use super::Pref;
-use memo::actor::Actor;
+use dto::actor::Actor;
 
 #[derive(Clone)]
 pub struct TemplateData {
