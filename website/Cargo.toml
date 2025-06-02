@@ -27,3 +27,4 @@ tracing-subscriber.workspace = true
 urlencoding.workspace = true
 validator.workspace = true
 memo = { path = "../memo" }
+dto = { path = "../dto" }
