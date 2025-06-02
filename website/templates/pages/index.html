@@ -9,25 +9,18 @@
             </ul>
         </nav>
 
-        <h1 class="title">My Buckets</h1>
+        <h1 class="title">My Vaults</h1>
 
-        {% if buckets.len() > 0 %}
+        {% if vaults.len() > 0 %}
         <div class="columns is-multiline">
-            {% for bucket in buckets %}
+            {% for vault in vaults %}
                 <div class="column is-one-third-tablet is-full-mobile">
-                    <a href="/buckets/{{ bucket.id }}" class="bucket-link">
-                        <span class="bucket-tile">
-                            {% if bucket.images_only %}
-                            <span class="icon bucket-icon has-text-info">
-                                <i class="fas fa-image"></i>
-                            </span>
-                            <p>{{ bucket.name }}</p>
-                            {% else %}
-                            <span class="icon bucket-icon has-text-grey-dark">
+                    <a href="/vaults/{{ vault.id }}" class="vault-link">
+                        <span class="vault-tile">
+                            <span class="icon vault-icon has-text-grey-dark">
                                 <i class="fas fa-file-alt"></i>
                             </span>
-                            <p>{{ bucket.name }}</p>
-                            {% endif %}
+                            <p>{{ vault.name }}</p>
                         </span>
                     </a>
                 </div>
@@ -36,10 +29,10 @@
         {% else %}
         <div class="message is-info">
             <div class="message-header">
-                <p>No buckets</p>
+                <p>No vaults</p>
             </div>
             <div class="message-body">
-                You have no buckets yet. Contact system admin.
+                You have no vaults yet. Contact system admin.
             </div>
         </div>
         {% endif %}

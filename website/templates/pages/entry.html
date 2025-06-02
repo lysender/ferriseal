@@ -6,21 +6,21 @@
         <nav class="breadcrumb" aria-label="breadcrumbs">
             <ul>
                 <li><a href="/">Home</a></li>
-                <li><a href="/buckets/{{ bucket.id }}">{{ bucket.name }}</a></li>
+                <li><a href="/vaults/{{ vault.id }}">{{ vault.name }}</a></li>
                 <li class="is-active">
-                    <a href="/buckets/{{ bucket.id }}/dirs/{{ dir.id }}" aria-current="page">
-                        <span id="breadcrumb-album-label">{{ dir.label }}</span>
+                    <a href="/vaults/{{ vault.id }}/entries/{{ entry.id }}" aria-current="page">
+                        <span id="breadcrumb-album-label">{{ entry.label }}</span>
                     </a>
                 </li>
             </ul>
         </nav>
 
         <h1 class="title" id="album-title">
-            {{ dir.label }}
+            {{ entry.label }}
         </h1>
 
-        <div id="edit-dir-container">
-            {% include "widgets/edit_dir_controls.html" %}
+        <div id="edit-entry-container">
+            {% include "widgets/edit_entry_controls.html" %}
         </div>
 
         <div class="has-text-right is-size-7">
@@ -30,7 +30,7 @@
         <div class="photo-gallery-container">
             <div
                 id="photo-gallery"
-                hx-get="/buckets/{{ bucket.id }}/dirs/{{ dir.id }}/photo_grid?page=1"
+                hx-get="/vaults/{{ vault.id }}/entries/{{ entry.id }}/photo_grid?page=1"
                 hx-trigger="load"
                 :class="edit_photos ? 'photo-grid photo-grid-edit' : 'photo-grid'"
             >

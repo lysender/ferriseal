@@ -25,7 +25,7 @@ use super::clients::{
     edit_client_controls_handler, edit_client_handler, new_client_handler,
     post_delete_client_handler, post_edit_client_handler, post_new_client_handler,
 };
-use super::dirs::{
+use super::entries::{
     dir_page_handler, edit_dir_controls_handler, edit_dir_handler, get_delete_dir_handler,
     new_dir_handler, post_delete_dir_handler, post_edit_dir_handler, post_new_dir_handler,
     search_dirs_handler,
@@ -38,7 +38,7 @@ use super::middleware::{
     auth_middleware, bucket_middleware, client_middleware, dir_middleware, file_middleware,
     my_bucket_middleware, pref_middleware, require_auth_middleware, user_middleware,
 };
-use super::my_bucket::my_bucket_page_handler;
+use super::my_vault::my_bucket_page_handler;
 use super::profile::{
     change_user_password_handler, post_change_password_handler, profile_controls_handler,
     profile_page_handler,

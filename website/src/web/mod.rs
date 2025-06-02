@@ -1,11 +1,11 @@
-pub mod dirs;
+pub mod entries;
 pub mod entries;
 pub mod error;
 pub mod index;
 pub mod login;
 pub mod logout;
 pub mod middleware;
-pub mod my_bucket;
+pub mod my_vault;
 pub mod orgs;
 pub mod policies;
 pub mod pref;

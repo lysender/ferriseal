@@ -1,0 +1,29 @@
+{% extends "layout/base.html" %}
+
+{% block content %}
+<section class="section">
+    <div class="container">
+        <nav class="breadcrumb" aria-label="breadcrumbs">
+            <ul>
+                <li><a href="/">Home</a></li>
+                <li><a href="/vaults/{{ vault.id }}">{{ vault.name }}</a></li>
+                <li class="is-active">
+                    <a href="/vaults/{{ vault.id }}/new_dir" aria-current="page">
+                        New Entry
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <h1 class="title">
+            Create new entry
+        </h1>
+
+        <div class="columns">
+            <div class="column is-half">
+                {% include "widgets/new_entry_form.html" %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

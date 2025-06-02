@@ -1,7 +1,7 @@
 use askama::Template;
 use axum::extract::Query;
 use axum::{Extension, body::Body, extract::State, response::Response};
-use memo::bucket::BucketDto;
+use dto::vault::VaultDto;
 use snafu::ResultExt;
 
 use crate::models::ListDirsParams;
@@ -14,28 +14,28 @@ use crate::{
 };
 
 #[derive(Template)]
-#[template(path = "pages/my_bucket.html")]
-struct MyBucketPageTemplate {
+#[template(path = "pages/my_vault.html")]
+struct MyVaultPageTemplate {
     t: TemplateData,
-    bucket: BucketDto,
+    vault: VaultDto,
     query_params: String,
 }
 
-pub async fn my_bucket_page_handler(
+pub async fn my_vault_page_handler(
     Extension(ctx): Extension<Ctx>,
     Extension(pref): Extension<Pref>,
-    Extension(bucket): Extension<BucketDto>,
+    Extension(vault): Extension<VaultDto>,
     State(state): State<AppState>,
     Query(query): Query<ListDirsParams>,
 ) -> Result<Response<Body>> {
     let actor = ctx.actor().expect("actor is required");
     let mut t = TemplateData::new(&state, Some(actor.clone()), &pref);
 
-    t.title = format!("Bucket - {}", &bucket.name);
+    t.title = format!("Vault - {}", &vault.name);
 
-    let tpl = MyBucketPageTemplate {
+    let tpl = MyVaultPageTemplate {
         t,
-        bucket,
+        vault,
         query_params: query.to_string(),
     };
 

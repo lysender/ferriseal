@@ -1,0 +1,115 @@
+<form
+    method="post"
+    action="/vaults/{{ vault.id }}/new_entry"
+    hx-post="/vaults/{{ vault.id }}/new_entry"
+>
+    <div class="card">
+        <div class="card-content">
+            <h1 class="title is-4 has-text-weight-bold">
+                Entry
+            </h1>
+
+            {% match error_message %}
+                {% when Some with (msg) %}
+                    <div class="panel-block">
+                        <div class="error-message mb-5 tag is-danger">
+                            <p>{{ msg }}</p>
+                        </div>
+                    </div>
+                {% when None %}
+            {% endmatch %}
+
+            <div class="field">
+                <label class="label">Label</label>
+                <div class="control">
+                    <input
+                        class="input"
+                        type="text"
+                        id="create-album-label"
+                        name="label"
+                        value="{{ payload.label }}"
+                        placeholder="Label"
+                        required
+                        minlength="1"
+                        maxlength="60"
+                    >
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="label">Username</label>
+                <div class="control">
+                    <input
+                        class="input"
+                        type="text"
+                        name="cipher_username"
+                        value="{{ payload.cipher_username }}"
+                        placeholder="Cipher Username"
+                        required
+                        minlength="1"
+                        maxlength="1000"
+                    >
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="label">Password</label>
+                <div class="control">
+                    <input
+                        class="input"
+                        type="text"
+                        name="cipher_password"
+                        value="{{ payload.cipher_password }}"
+                        placeholder="Cipher Password"
+                        required
+                        minlength="1"
+                        maxlength="1000"
+                    >
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="label">Notes</label>
+                <div class="control">
+                    <input
+                        class="input"
+                        type="text"
+                        name="cipher_notes"
+                        value="{{ payload.cipher_notes }}"
+                        placeholder="Cipher Notes"
+                        required
+                        minlength="1"
+                        maxlength="5000"
+                    >
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="label">Extra Notes</label>
+                <div class="control">
+                    <input
+                        class="input"
+                        type="text"
+                        name="cipher_extra_notes"
+                        value="{{ payload.cipher_extra_notes }}"
+                        placeholder="Cipher Extra Notes"
+                        required
+                        minlength="1"
+                        maxlength="5000"
+                    >
+                </div>
+            </div>
+
+            <div class="pt-3 field is-grouped">
+                <div class="control">
+                    <input type="hidden" name="token" value="{{ payload.token }}" />
+                    <button class="button is-link" type="submit" name="submit">Submit</button>
+                </div>
+                <div class="control">
+                    <a class="button is-link is-light" href="/vaults/{{ vault.id }}">Cancel</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+

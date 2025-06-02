@@ -9,24 +9,20 @@
 {% endmatch %}
 
 {% if can_create %}
-<a class="panel-block has-text-primary" href="/buckets/{{ bucket.id }}/new_dir">
+<a class="panel-block has-text-primary" href="/vaults/{{ vault.id }}/new_entry">
     <span class="panel-icon">
         <i class="fas fa-plus has-text-primary" aria-hidden="true"></i>
     </span>
-    {% if bucket.images_only %}
-    Create new album
-    {% else %}
-    Create new directory
-    {% endif %}
+    Create new entry
 </a>
 {% endif %}
 
-{% for dir in dirs %}
-    <a class="panel-block" href="/buckets/{{ bucket.id }}/dirs/{{ dir.id }}">
+{% for entry in entries %}
+    <a class="panel-block" href="/vaults/{{ vault.id }}/entries/{{ entry.id }}">
         <span class="panel-icon">
             <i class="fas fa-book" aria-hidden="true"></i>
         </span>
-        {{ dir.label }}
+        {{ entry.label }}
     </a>
 {% endfor %}
 
@@ -38,7 +34,7 @@
             <a
                 href="/{{ prev.url }}"
                 hx-push-url="/{{ prev.url }}"
-                hx-get="/albums/listing{{ prev.url }}"
+                hx-get="/vaults/{{ vault.id }}/search_entries{{ prev.url }}"
                 hx-target=".album-items"
                 class="pagination-previous"
             >
@@ -52,7 +48,7 @@
             <a
                 href="/{{ next.url }}"
                 hx-push-url="{{ next.url }}"
-                hx-get="/albums/listing{{ next.url }}"
+                hx-get="/vaults/{{ vault.id }}/search_entries{{ next.url }}"
                 hx-target=".album-items"
                 class="pagination-previous"
             >
@@ -69,7 +65,7 @@
                     <a
                         href="/{{ link.url }}"
                         hx-push-url="/{{ link.url }}"
-                        hx-get="/buckets/{{ bucket.id }}/search_dirs{{ link.url }}"
+                        hx-get="/vaults/{{ vault.id }}/search_entries{{ link.url }}"
                         hx-target=".album-items"
                         {% if link.active %}
                         class="pagination-link is-current"

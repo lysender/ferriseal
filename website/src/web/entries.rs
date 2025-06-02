@@ -2,15 +2,13 @@ use askama::Template;
 use axum::extract::Query;
 use axum::http::StatusCode;
 use axum::{Extension, Form, body::Body, extract::State, response::Response};
-use memo::bucket::BucketDto;
 use snafu::ResultExt;
 use urlencoding::encode;
 
 use crate::models::PaginationLinks;
 use crate::models::tokens::TokenFormData;
-use crate::services::dirs::{
-    Dir, NewDirFormData, SearchDirsParams, UpdateDirFormData, create_dir, delete_dir, list_dirs,
-    update_dir,
+use crate::services::entries::{
+    EntryFormData, SearchEntriesParams, create_entry, delete_entry, list_entries,
 };
 use crate::{
     Error, Result,
@@ -21,46 +19,48 @@ use crate::{
     services::token::create_csrf_token,
     web::{Action, Resource, enforce_policy},
 };
+use dto::entry::EntryDto;
+use dto::vault::VaultDto;
 
 #[derive(Template)]
-#[template(path = "widgets/search_dirs.html")]
-struct SearchDirsTemplate {
-    bucket: BucketDto,
-    dirs: Vec<Dir>,
+#[template(path = "widgets/search_entries.html")]
+struct SearchEntriesTemplate {
+    vault: VaultDto,
+    entries: Vec<EntryDto>,
     pagination: Option<PaginationLinks>,
     can_create: bool,
     error_message: Option<String>,
 }
 
-pub async fn search_dirs_handler(
+pub async fn search_entries_handler(
     Extension(ctx): Extension<Ctx>,
-    Extension(bucket): Extension<BucketDto>,
+    Extension(vault): Extension<VaultDto>,
     State(state): State<AppState>,
-    Query(query): Query<SearchDirsParams>,
+    Query(query): Query<SearchEntriesParams>,
 ) -> Result<Response<Body>> {
     let actor = ctx.actor().expect("actor is required");
-    let _ = enforce_policy(actor, Resource::Album, Action::Read)?;
+    let _ = enforce_policy(actor, Resource::Entry, Action::Read)?;
 
-    let cid = bucket.client_id.clone();
-    let bid = bucket.id.clone();
+    let oid = vault.org_id.clone();
+    let vid = vault.id.clone();
 
-    let mut tpl = SearchDirsTemplate {
-        bucket,
-        dirs: Vec::new(),
+    let mut tpl = SearchEntriesTemplate {
+        vault,
+        entries: Vec::new(),
         pagination: None,
-        can_create: enforce_policy(actor, Resource::Album, Action::Create).is_ok(),
+        can_create: enforce_policy(actor, Resource::Entry, Action::Create).is_ok(),
         error_message: None,
     };
 
     let token = ctx.token().expect("token is required");
-    match list_dirs(&state.config.api_url, token, &cid, &bid, &query).await {
-        Ok(dirs) => {
+    match list_entries(&state.config.api_url, token, &oid, &vid, &query).await {
+        Ok(entries) => {
             let mut keyword_param: String = "".to_string();
             if let Some(keyword) = &query.keyword {
                 keyword_param = format!("&keyword={}", encode(keyword).to_string());
             }
-            tpl.dirs = dirs.data;
-            tpl.pagination = Some(PaginationLinks::new(&dirs.meta, "", &keyword_param));
+            tpl.entries = entries.data;
+            tpl.pagination = Some(PaginationLinks::new(&entries.meta, "", &keyword_param));
 
             Ok(Response::builder()
                 .status(200)
@@ -80,47 +80,47 @@ pub async fn search_dirs_handler(
 }
 
 #[derive(Template)]
-#[template(path = "pages/new_dir.html")]
-struct NewDirTemplate {
+#[template(path = "pages/new_entry.html")]
+struct NewEntryTemplate {
     t: TemplateData,
-    bucket: BucketDto,
-    payload: NewDirFormData,
+    vault: VaultDto,
+    payload: EntryFormData,
     error_message: Option<String>,
 }
 
 #[derive(Template)]
-#[template(path = "widgets/new_dir_form.html")]
-struct DirFormTemplate {
-    bucket: BucketDto,
-    payload: NewDirFormData,
+#[template(path = "widgets/new_entry_form.html")]
+struct EntryFormTemplate {
+    vault: VaultDto,
+    payload: EntryFormData,
     error_message: Option<String>,
 }
 
-pub async fn new_dir_handler(
+pub async fn new_entry_handler(
     Extension(ctx): Extension<Ctx>,
     Extension(pref): Extension<Pref>,
-    Extension(bucket): Extension<BucketDto>,
+    Extension(vault): Extension<VaultDto>,
     State(state): State<AppState>,
 ) -> Result<Response<Body>> {
     let config = state.config.clone();
     let actor = ctx.actor().expect("actor is required");
 
-    let _ = enforce_policy(actor, Resource::Album, Action::Create)?;
+    let _ = enforce_policy(actor, Resource::Entry, Action::Create)?;
 
     let mut t = TemplateData::new(&state, Some(actor.clone()), &pref);
-    t.title = String::from(match &bucket.images_only {
-        &true => "Create New Album",
-        &false => "Create New Directory",
-    });
+    t.title = "New Entry".to_string();
 
-    let token = create_csrf_token("new_dir", &config.jwt_secret)?;
+    let token = create_csrf_token("new_entry", &config.jwt_secret)?;
 
-    let tpl = NewDirTemplate {
+    let tpl = NewEntryTemplate {
         t,
-        bucket,
-        payload: NewDirFormData {
-            name: "".to_string(),
+        vault,
+        payload: EntryFormData {
             label: "".to_string(),
+            cipher_username: None,
+            cipher_password: None,
+            cipher_notes: None,
+            cipher_extra_notes: None,
             token,
         },
         error_message: None,
@@ -132,26 +132,29 @@ pub async fn new_dir_handler(
         .context(ResponseBuilderSnafu)?)
 }
 
-pub async fn post_new_dir_handler(
+pub async fn post_new_entry_handler(
     Extension(ctx): Extension<Ctx>,
-    Extension(bucket): Extension<BucketDto>,
+    Extension(vault): Extension<VaultDto>,
     State(state): State<AppState>,
-    payload: Form<NewDirFormData>,
+    payload: Form<EntryFormData>,
 ) -> Result<Response<Body>> {
     let config = state.config.clone();
     let actor = ctx.actor().expect("actor is required");
 
-    let _ = enforce_policy(actor, Resource::Album, Action::Create)?;
+    let _ = enforce_policy(actor, Resource::Entry, Action::Create)?;
 
-    let token = create_csrf_token("new_dir", &config.jwt_secret)?;
-    let cid = bucket.client_id.clone();
-    let bid = bucket.id.clone();
+    let token = create_csrf_token("new_entry", &config.jwt_secret)?;
+    let oid = vault.org_id.clone();
+    let vid = vault.id.clone();
 
-    let mut tpl = DirFormTemplate {
-        bucket,
-        payload: NewDirFormData {
-            name: "".to_string(),
+    let mut tpl = EntryFormTemplate {
+        vault,
+        payload: EntryFormData {
             label: "".to_string(),
+            cipher_username: None,
+            cipher_password: None,
+            cipher_notes: None,
+            cipher_extra_notes: None,
             token,
         },
         error_message: None,
@@ -159,18 +162,21 @@ pub async fn post_new_dir_handler(
 
     let status: StatusCode;
 
-    let dir = NewDirFormData {
-        name: payload.name.clone(),
+    let entry = EntryFormData {
         label: payload.label.clone(),
+        cipher_username: payload.cipher_username.clone(),
+        cipher_password: payload.cipher_password.clone(),
+        cipher_notes: payload.cipher_notes.clone(),
+        cipher_extra_notes: payload.cipher_extra_notes.clone(),
         token: payload.token.clone(),
     };
 
     let token = ctx.token().expect("token is required");
-    let result = create_dir(&config, token, &cid, &bid, dir).await;
+    let result = create_entry(&config, token, &oid, &vid, entry).await;
 
     match result {
         Ok(_) => {
-            let next_url = format!("/buckets/{}", &bid);
+            let next_url = format!("/vaults/{}", &vid);
             // Weird but can't do a redirect here, let htmx handle it
             Ok(Response::builder()
                 .status(200)
@@ -183,7 +189,6 @@ pub async fn post_new_dir_handler(
             status = error_info.status_code;
             tpl.error_message = Some(error_info.message);
 
-            tpl.payload.name = payload.name.clone();
             tpl.payload.label = payload.label.clone();
 
             // Will only arrive here on error
@@ -196,22 +201,20 @@ pub async fn post_new_dir_handler(
 }
 
 #[derive(Template)]
-#[template(path = "pages/dir.html")]
+#[template(path = "pages/entry.html")]
 struct DirTemplate {
     t: TemplateData,
-    bucket: BucketDto,
-    dir: Dir,
+    vault: VaultDto,
+    entry: EntryDto,
     updated: bool,
     can_edit: bool,
     can_delete: bool,
-    can_add_files: bool,
-    can_delete_files: bool,
 }
 
 pub async fn dir_page_handler(
     Extension(ctx): Extension<Ctx>,
     Extension(pref): Extension<Pref>,
-    Extension(bucket): Extension<BucketDto>,
+    Extension(vault): Extension<VaultDto>,
     Extension(dir): Extension<Dir>,
     State(state): State<AppState>,
 ) -> Result<Response<Body>> {
@@ -225,7 +228,7 @@ pub async fn dir_page_handler(
 
     let tpl = DirTemplate {
         t,
-        bucket,
+        vault,
         dir,
         updated: false,
         can_edit: enforce_policy(actor, Resource::Album, Action::Update).is_ok(),
@@ -243,7 +246,7 @@ pub async fn dir_page_handler(
 #[derive(Template)]
 #[template(path = "widgets/edit_dir_controls.html")]
 struct EditDirControlsTemplate {
-    bucket: BucketDto,
+    vault: VaultDto,
     dir: Dir,
     updated: bool,
     can_edit: bool,
@@ -255,14 +258,14 @@ struct EditDirControlsTemplate {
 /// Simply re-renders the edit and delete dir controls
 pub async fn edit_dir_controls_handler(
     Extension(ctx): Extension<Ctx>,
-    Extension(bucket): Extension<BucketDto>,
+    Extension(vault): Extension<VaultDto>,
     Extension(dir): Extension<Dir>,
 ) -> Result<Response<Body>> {
     let actor = ctx.actor().expect("actor is required");
     let _ = enforce_policy(actor, Resource::Album, Action::Update)?;
 
     let tpl = EditDirControlsTemplate {
-        bucket,
+        vault,
         dir,
         updated: false,
         can_edit: enforce_policy(actor, Resource::Album, Action::Update).is_ok(),
@@ -281,7 +284,7 @@ pub async fn edit_dir_controls_handler(
 #[template(path = "widgets/edit_dir_form.html")]
 struct EditDirFormTemplate {
     payload: UpdateDirFormData,
-    bucket: BucketDto,
+    vault: VaultDto,
     dir: Dir,
     error_message: Option<String>,
 }
@@ -289,7 +292,7 @@ struct EditDirFormTemplate {
 /// Renders the edit album form
 pub async fn edit_dir_handler(
     Extension(ctx): Extension<Ctx>,
-    Extension(bucket): Extension<BucketDto>,
+    Extension(vault): Extension<VaultDto>,
     Extension(dir): Extension<Dir>,
     State(state): State<AppState>,
 ) -> Result<Response<Body>> {
@@ -302,7 +305,7 @@ pub async fn edit_dir_handler(
 
     let label = dir.label.clone();
     let tpl = EditDirFormTemplate {
-        bucket,
+        vault,
         dir,
         payload: UpdateDirFormData { label, token },
         error_message: None,
@@ -317,14 +320,14 @@ pub async fn edit_dir_handler(
 /// Handles the edit album submission
 pub async fn post_edit_dir_handler(
     Extension(ctx): Extension<Ctx>,
-    Extension(bucket): Extension<BucketDto>,
+    Extension(vault): Extension<VaultDto>,
     Extension(dir): Extension<Dir>,
     State(state): State<AppState>,
     payload: Form<UpdateDirFormData>,
 ) -> Result<Response<Body>> {
     let config = state.config.clone();
-    let cid = bucket.client_id.clone();
-    let bid = bucket.id.clone();
+    let cid = vault.org_id.clone();
+    let bid = vault.id.clone();
     let dir_id = dir.id.clone();
     let actor = ctx.actor().expect("actor is required");
 
@@ -333,7 +336,7 @@ pub async fn post_edit_dir_handler(
     let token = create_csrf_token(&dir_id, &config.jwt_secret)?;
 
     let mut tpl = EditDirFormTemplate {
-        bucket: bucket.clone(),
+        vault: vault.clone(),
         dir: dir.clone(),
         payload: UpdateDirFormData {
             label: "".to_string(),
@@ -350,7 +353,7 @@ pub async fn post_edit_dir_handler(
         Ok(updated_dir) => {
             // Render the controls again with an out-of-bound swap for title
             let tpl = EditDirControlsTemplate {
-                bucket,
+                vault,
                 dir: updated_dir,
                 updated: true,
                 can_edit: enforce_policy(actor, Resource::Album, Action::Update).is_ok(),
@@ -391,7 +394,7 @@ pub async fn post_edit_dir_handler(
 #[derive(Template)]
 #[template(path = "widgets/delete_dir_form.html")]
 struct DeleteDirTemplate {
-    bucket: BucketDto,
+    vault: VaultDto,
     dir: Dir,
     payload: TokenFormData,
     error_message: Option<String>,
@@ -399,7 +402,7 @@ struct DeleteDirTemplate {
 
 pub async fn get_delete_dir_handler(
     Extension(ctx): Extension<Ctx>,
-    Extension(bucket): Extension<BucketDto>,
+    Extension(vault): Extension<VaultDto>,
     Extension(dir): Extension<Dir>,
     State(state): State<AppState>,
 ) -> Result<Response<Body>> {
@@ -410,7 +413,7 @@ pub async fn get_delete_dir_handler(
     let token = create_csrf_token(&dir.id, &config.jwt_secret)?;
 
     let tpl = DeleteDirTemplate {
-        bucket,
+        vault,
         dir,
         payload: TokenFormData { token },
         error_message: None,
@@ -425,7 +428,7 @@ pub async fn get_delete_dir_handler(
 /// Deletes album then redirect or show error
 pub async fn post_delete_dir_handler(
     Extension(ctx): Extension<Ctx>,
-    Extension(bucket): Extension<BucketDto>,
+    Extension(vault): Extension<VaultDto>,
     Extension(dir): Extension<Dir>,
     State(state): State<AppState>,
     payload: Form<TokenFormData>,
@@ -442,8 +445,8 @@ pub async fn post_delete_dir_handler(
     let result = delete_dir(
         &config,
         auth_token,
-        &bucket.client_id,
-        &bucket.id,
+        &vault.org_id,
+        &vault.id,
         &dir.id,
         &payload.token,
     )
@@ -451,11 +454,11 @@ pub async fn post_delete_dir_handler(
 
     match result {
         Ok(_) => {
-            let bid = bucket.id.clone();
+            let bid = vault.id.clone();
 
             // Render same form but trigger a redirect to home
             let tpl = DeleteDirTemplate {
-                bucket,
+                vault,
                 dir,
                 payload: TokenFormData {
                     token: "".to_string(),
@@ -464,7 +467,7 @@ pub async fn post_delete_dir_handler(
             };
             Ok(Response::builder()
                 .status(200)
-                .header("HX-Redirect", format!("/buckets/{}", &bid))
+                .header("HX-Redirect", format!("/vaults/{}", &bid))
                 .body(Body::from(tpl.render().context(TemplateSnafu)?))
                 .context(ResponseBuilderSnafu)?)
         }
@@ -474,7 +477,7 @@ pub async fn post_delete_dir_handler(
 
             // Just render the form on first load or on error
             let tpl = DeleteDirTemplate {
-                bucket,
+                vault,
                 dir,
                 payload: TokenFormData { token },
                 error_message,

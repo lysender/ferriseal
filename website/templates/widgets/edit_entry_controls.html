@@ -2,18 +2,18 @@
     {% if can_add_files %}
     <div>
         <div class="buttons">
-            <a class="button" href="/buckets/{{ bucket.id }}">
+            <a class="button" href="/vaults/{{ vault.id }}">
                 <span class="icon is-small">
                     <i class="fas fa-arrow-left"></i>
                 </span>
                 <span>Back</span>
             </a>
 
-            <a href="/buckets/{{ bucket.id }}/dirs/{{ dir.id }}/upload" class="button is-primary">
+            <a href="/vaults/{{ vault.id }}/entries/{{ entry.id }}/upload" class="button is-primary">
                 <span class="icon is-small">
                     <i class="fas fa-plus"></i>
                 </span>
-                {% if bucket.images_only %}
+                {% if vault.images_only %}
                 <span>Add Photos</span>
                 {% else %}
                 <span>Add Files</span>
@@ -26,12 +26,12 @@
     {% if can_edit || can_delete || can_delete_files %}
     <div
         :class="open ? 'dropdown is-right is-active' : 'dropdown is-right'"
-        id="btn-dir-menu"
+        id="btn-entry-menu"
         x-data="{ open: false }"
     >
         <div class="dropdown-trigger">
             <button
-                id="btn-dir-menu-trigger"
+                id="btn-entry-menu-trigger"
                 :class="edit_photos ? 'button is-info' : 'button'"
                 aria-haspopup="true"
                 aria-controls="dropdown-menu"
@@ -60,8 +60,8 @@
                 {% if can_edit %}
                 <a
                     class="dropdown-item"
-                    hx-get="/buckets/{{ bucket.id }}/dirs/{{ dir.id }}/edit"
-                    hx-target="#edit-dir-container"
+                    hx-get="/vaults/{{ vault.id }}/entries/{{ entry.id }}/edit"
+                    hx-target="#edit-entry-container"
                 >
                     <span class="icon is-small">
                         <i class="fas fa-pen" aria-hidden="true"></i>
@@ -74,13 +74,13 @@
                 <hr class="dropdown-divider" />
                 <a
                     class="dropdown-item has-text-danger"
-                    hx-get="/buckets/{{ bucket.id }}/dirs/{{ dir.id }}/delete"
-                    hx-target="#edit-dir-container"
+                    hx-get="/vaults/{{ vault.id }}/entries/{{ entry.id }}/delete"
+                    hx-target="#edit-entry-container"
                 >
                     <span class="icon is-small">
                         <i class="fas fa-times" aria-hidden="true"></i>
                     </span>
-                    {% if bucket.images_only %}
+                    {% if vault.images_only %}
                     Delete Album
                     {% else %}
                     Delete Directory 
@@ -94,8 +94,8 @@
 </div>
 
 {% if updated %}
-<span id="breadcrumb-album-label" hx-swap-oob="true">{{ dir.label }}</span>
+<span id="breadcrumb-album-label" hx-swap-oob="true">{{ entry.label }}</span>
 <h1 class="title" id="album-title" hx-swap-oob="true">
-    {{ dir.label }}
+    {{ entry.label }}
 </h1>
 {% endif %}

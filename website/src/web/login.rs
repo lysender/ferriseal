@@ -21,7 +21,7 @@ use crate::{
     },
 };
 use crate::{error::ErrorInfo, models::Pref, run::AppState};
-use memo::actor::Actor;
+use dto::actor::Actor;
 
 use super::AUTH_TOKEN_COOKIE;
 
