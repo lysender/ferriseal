@@ -6,10 +6,10 @@
         <nav class="breadcrumb" aria-label="breadcrumbs">
             <ul>
                 <li><a href="/">Home</a></li>
-                <li><a href="/clients">Clients</a></li>
-                <li><a href="/clients/{{ client.id }}">{{ client.name }}</a></li>
+                <li><a href="/orgs">Orgs</a></li>
+                <li><a href="/orgs/{{ org.id }}">{{ org.name }}</a></li>
                 <li class="is-active">
-                    <a href="/clients/{{ client.id }}/users" aria-current="page">
+                    <a href="/orgs/{{ org.id }}/users" aria-current="page">
                         <span>Users</span>
                     </a>
                 </li>
@@ -20,7 +20,7 @@
 
         <div class="is-flex is-justify-content-space-between mb-5">
             <div>
-                <a class="button" href="/clients/{{ client.id }}">
+                <a class="button" href="/orgs/{{ org.id }}">
                     <span class="icon is-small">
                         <i class="fas fa-arrow-left"></i>
                     </span>
@@ -29,7 +29,7 @@
             </div>
 
             <div>
-                <a class="button is-primary" href="/clients/{{ client.id }}/users/new">
+                <a class="button is-primary" href="/orgs/{{ org.id }}/users/new">
                     <span class="icon is-small">
                         <i class="fas fa-plus"></i>
                     </span>
@@ -51,7 +51,7 @@
               <tbody>
                 {% for user in users %}
                 <tr>
-                    <td><a href="/clients/{{ client.id }}/users/{{ user.id }}">{{ user.username }}</a></td>
+                    <td><a href="/orgs/{{ org.id }}/users/{{ user.id }}">{{ user.username }}</a></td>
                     <td>
                         {% if user.status == "active" %}
                         <span class="tag is-success">Active</span>
@@ -75,7 +75,7 @@
                 <p>No users</p>
             </div>
             <div class="message-body">
-                There are no users yet for this client.
+                There are no users yet for this org.
             </div>
         </div>
         {% endif %}

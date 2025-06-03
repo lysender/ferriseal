@@ -297,16 +297,15 @@ pub async fn edit_entry_handler(
 
     let token = create_csrf_token(&entry.id, &config.jwt_secret)?;
 
-    let label = entry.label.clone();
     let tpl = EditEntryFormTemplate {
         vault,
-        entry,
+        entry: entry.clone(),
         payload: EntryFormData {
-            label: entry.label.clone(),
-            cipher_username: entry.cipher_username.clone(),
-            cipher_password: entry.cipher_password.clone(),
-            cipher_notes: entry.cipher_notes.clone(),
-            cipher_extra_notes: entry.cipher_extra_notes.clone(),
+            label: entry.label,
+            cipher_username: entry.cipher_username,
+            cipher_password: entry.cipher_password,
+            cipher_notes: entry.cipher_notes,
+            cipher_extra_notes: entry.cipher_extra_notes,
             token,
         },
         error_message: None,

@@ -1,4 +1,4 @@
-use memo::pagination::PaginatedMeta;
+use dto::pagination::PaginatedMetaDto;
 use serde::Serialize;
 
 #[derive(Clone, Serialize)]
@@ -16,7 +16,7 @@ pub struct PaginationLink {
 }
 
 impl PaginationLinks {
-    pub fn new(meta: &PaginatedMeta, base_url: &str, suffix: &str) -> Self {
+    pub fn new(meta: &PaginatedMetaDto, base_url: &str, suffix: &str) -> Self {
         let mut items = Vec::new();
         let mut prev = None;
         let mut next = None;
@@ -153,7 +153,7 @@ mod tests {
 
     #[test]
     fn test_empty() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 1,
             per_page: 10,
             total_records: 0,
@@ -167,7 +167,7 @@ mod tests {
 
     #[test]
     fn test_one_page() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 1,
             per_page: 10,
             total_records: 5,
@@ -182,7 +182,7 @@ mod tests {
 
     #[test]
     fn test_two_pages() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 1,
             per_page: 10,
             total_records: 20,
@@ -197,7 +197,7 @@ mod tests {
 
     #[test]
     fn test_three_pages() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 1,
             per_page: 10,
             total_records: 30,
@@ -212,7 +212,7 @@ mod tests {
 
     #[test]
     fn test_page_3_of_3() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 3,
             per_page: 10,
             total_records: 30,
@@ -227,7 +227,7 @@ mod tests {
 
     #[test]
     fn test_page_2_of_3() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 2,
             per_page: 10,
             total_records: 30,
@@ -242,7 +242,7 @@ mod tests {
 
     #[test]
     fn test_page_1_of_4() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 1,
             per_page: 10,
             total_records: 40,
@@ -257,7 +257,7 @@ mod tests {
 
     #[test]
     fn test_page_1_of_5() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 1,
             per_page: 10,
             total_records: 50,
@@ -272,7 +272,7 @@ mod tests {
 
     #[test]
     fn test_page_1_of_6() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 1,
             per_page: 10,
             total_records: 60,
@@ -287,7 +287,7 @@ mod tests {
 
     #[test]
     fn test_page_1_of_7() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 1,
             per_page: 10,
             total_records: 70,
@@ -302,7 +302,7 @@ mod tests {
 
     #[test]
     fn test_page_1_of_100() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 1,
             per_page: 10,
             total_records: 1000,
@@ -317,7 +317,7 @@ mod tests {
 
     #[test]
     fn test_page_4_of_4() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 4,
             per_page: 10,
             total_records: 40,
@@ -331,7 +331,7 @@ mod tests {
 
     #[test]
     fn test_page_5_of_5() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 5,
             per_page: 10,
             total_records: 50,
@@ -346,7 +346,7 @@ mod tests {
 
     #[test]
     fn test_page_6_of_6() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 6,
             per_page: 10,
             total_records: 60,
@@ -361,7 +361,7 @@ mod tests {
 
     #[test]
     fn test_page_100_of_100() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 100,
             per_page: 10,
             total_records: 1000,
@@ -376,7 +376,7 @@ mod tests {
 
     #[test]
     fn test_page_2_of_5() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 2,
             per_page: 10,
             total_records: 50,
@@ -391,7 +391,7 @@ mod tests {
 
     #[test]
     fn test_page_3_of_5() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 3,
             per_page: 10,
             total_records: 50,
@@ -405,7 +405,7 @@ mod tests {
 
     #[test]
     fn test_page_3_of_6() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 3,
             per_page: 10,
             total_records: 60,
@@ -419,7 +419,7 @@ mod tests {
 
     #[test]
     fn test_page_4_of_6() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 4,
             per_page: 10,
             total_records: 60,
@@ -433,7 +433,7 @@ mod tests {
 
     #[test]
     fn test_page_5_of_6() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 5,
             per_page: 10,
             total_records: 60,
@@ -447,7 +447,7 @@ mod tests {
 
     #[test]
     fn test_page_4_of_7() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 4,
             per_page: 10,
             total_records: 70,
@@ -461,7 +461,7 @@ mod tests {
 
     #[test]
     fn test_page_3_of_7() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 3,
             per_page: 10,
             total_records: 70,
@@ -475,7 +475,7 @@ mod tests {
 
     #[test]
     fn test_page_2_of_7() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 2,
             per_page: 10,
             total_records: 70,
@@ -489,7 +489,7 @@ mod tests {
 
     #[test]
     fn test_page_7_of_7() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 7,
             per_page: 10,
             total_records: 70,
@@ -503,7 +503,7 @@ mod tests {
 
     #[test]
     fn test_page_6_of_7() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 6,
             per_page: 10,
             total_records: 70,
@@ -517,7 +517,7 @@ mod tests {
 
     #[test]
     fn test_page_5_of_7() {
-        let meta = PaginatedMeta {
+        let meta = PaginatedMetaDto {
             page: 5,
             per_page: 10,
             total_records: 70,

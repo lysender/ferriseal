@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use snafu::{Backtrace, ErrorCompat, Snafu};
 use std::path::PathBuf;
 
-use memo::role::{InvalidPermissionsError, InvalidRolesError};
+use dto::role::{InvalidPermissionsError, InvalidRolesError};
 
 pub type Result<T> = std::result::Result<T, Error>;
 

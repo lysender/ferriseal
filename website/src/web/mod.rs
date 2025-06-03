@@ -1,5 +1,4 @@
 pub mod entries;
-pub mod entries;
 pub mod error;
 pub mod index;
 pub mod login;

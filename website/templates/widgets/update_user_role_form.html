@@ -2,8 +2,8 @@
 
 <form
     method="post"
-    action="/clients/{{ client.id }}/users/{{ user.id }}/update_role"
-    hx-post="/clients/{{ client.id }}/users/{{ user.id }}/update_role"
+    action="/orgs/{{ org.id }}/users/{{ user.id }}/update_role"
+    hx-post="/orgs/{{ org.id }}/users/{{ user.id }}/update_role"
     hx-target="#edit-user-container"
 >
     <div class="columns">
@@ -37,7 +37,7 @@
                         <div class="control">
                             <button
                                 class="button is-link is-light"
-                                hx-get="/clients/{{ client.id }}/users/{{ user.id }}/edit_controls"
+                                hx-get="/orgs/{{ org.id }}/users/{{ user.id }}/edit_controls"
                                 hx-target="#edit-user-container"
                             >
                                 Cancel

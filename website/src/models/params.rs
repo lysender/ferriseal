@@ -40,11 +40,6 @@ pub struct ListEntriesParams {
     pub per_page: Option<u32>,
 }
 
-#[derive(Deserialize)]
-pub struct UploadParams {
-    pub token: Option<String>,
-}
-
 impl Default for ListEntriesParams {
     fn default() -> Self {
         Self {

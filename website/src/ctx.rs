@@ -1,4 +1,4 @@
-use memo::actor::Actor;
+use dto::actor::Actor;
 
 #[derive(Clone)]
 pub struct Ctx {

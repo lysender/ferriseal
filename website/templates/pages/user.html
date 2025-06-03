@@ -6,11 +6,11 @@
         <nav class="breadcrumb" aria-label="breadcrumbs">
             <ul>
                 <li><a href="/">Home</a></li>
-                <li><a href="/clients">Clients</a></li>
-                <li><a href="/clients/{{ client.id }}">{{ client.name }}</a></li>
-                <li><a href="/clients/{{ client.id }}/users">Users</a></li>
+                <li><a href="/orgs">Orgs</a></li>
+                <li><a href="/orgs/{{ org.id }}">{{ org.name }}</a></li>
+                <li><a href="/orgs/{{ org.id }}/users">Users</a></li>
                 <li class="is-active">
-                    <a href="/clients/{{ client.id }}/users/{{ user.id }}" aria-current="page">{{ user.username }}</a>
+                    <a href="/orgs/{{ org.id }}/users/{{ user.id }}" aria-current="page">{{ user.username }}</a>
                 </li>
             </ul>
         </nav>

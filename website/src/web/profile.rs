@@ -2,7 +2,7 @@ use askama::Template;
 use axum::debug_handler;
 use axum::http::StatusCode;
 use axum::{Extension, Form, body::Body, extract::State, response::Response};
-use memo::user::UserDto;
+use dto::user::UserDto;
 use snafu::ResultExt;
 
 use crate::services::users::{ChangePasswordFormData, change_user_password};
