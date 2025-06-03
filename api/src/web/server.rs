@@ -303,7 +303,7 @@ mod tests {
             .expect_failure()
             .await;
 
-        response.assert_status_not_found();
+        response.assert_status_forbidden();
     }
 
     #[tokio::test]
@@ -375,7 +375,7 @@ mod tests {
             .expect_failure()
             .await;
 
-        response.assert_status_not_found();
+        response.assert_status_forbidden();
     }
 
     #[tokio::test]
@@ -399,13 +399,13 @@ mod tests {
         let server = create_test_app();
         let token = create_test_admin_auth_token().unwrap();
         let url = format!("/orgs/{}/vaults", TEST_ADMIN_ORG_ID);
-        let vaults: Vec<VaultDto> = server
+        let response = server
             .get(url.as_str())
             .authorization_bearer(token.as_str())
-            .await
-            .json();
+            .expect_failure()
+            .await;
 
-        assert_eq!(vaults.len(), 0);
+        response.assert_status_forbidden();
     }
 
     #[tokio::test]
@@ -483,6 +483,36 @@ mod tests {
         assert_eq!(users.len(), 1);
         let user = users.first().unwrap();
         assert_eq!(user.id.as_str(), TEST_USER_ID);
+    }
+
+    #[tokio::test]
+    async fn test_list_admin_users_as_user() {
+        // Admin orgs should not allow user/vault management
+        let server = create_test_app();
+        let token = create_test_user_auth_token().unwrap();
+        let url = format!("/orgs/{}/users", TEST_ADMIN_ORG_ID);
+        let response = server
+            .get(url.as_str())
+            .authorization_bearer(token.as_str())
+            .expect_failure()
+            .await;
+
+        response.assert_status_forbidden();
+    }
+
+    #[tokio::test]
+    async fn test_list_admin_users_as_admin() {
+        // Admin orgs should not allow user/vault management
+        let server = create_test_app();
+        let token = create_test_user_auth_token().unwrap();
+        let url = format!("/orgs/{}/users", TEST_ADMIN_ORG_ID);
+        let response = server
+            .get(url.as_str())
+            .authorization_bearer(token.as_str())
+            .expect_failure()
+            .await;
+
+        response.assert_status_forbidden();
     }
 
     #[tokio::test]

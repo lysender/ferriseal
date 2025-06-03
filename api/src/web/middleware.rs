@@ -88,8 +88,8 @@ pub async fn org_middleware(
     if !actor.is_system_admin() {
         ensure!(
             actor.org_id.as_str() == params.org_id.as_str(),
-            NotFoundSnafu {
-                msg: "Org not found"
+            ForbiddenSnafu {
+                msg: "You have no permissions to access the org"
             }
         )
     }
@@ -112,7 +112,7 @@ pub async fn prevent_admin_org_middleware(
     next: Next,
 ) -> Result<Response<Body>> {
     ensure!(
-        org.admin,
+        !org.admin,
         ForbiddenSnafu {
             msg: "Admin orgs does not allow managing users and vaults"
         }
