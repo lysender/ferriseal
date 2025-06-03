@@ -27,9 +27,8 @@ pub async fn change_current_password(
     })?;
 
     // Validate current password
-    if let Err(verify_err) =
-        verify_password(&data.current_password, &user.password).context(PasswordSnafu)
-    {
+    let verify_res = verify_password(&data.current_password, &user.password).context(PasswordSnafu);
+    if let Err(verify_err) = verify_res {
         return match verify_err {
             #[allow(unused_variables)]
             Error::Password { source, backtrace } => match source {
