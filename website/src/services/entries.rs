@@ -1,6 +1,8 @@
+use core::fmt;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, ensure};
+use urlencoding::encode;
 
 use crate::config::Config;
 use crate::error::{CsrfTokenSnafu, HttpClientSnafu, HttpResponseParseSnafu};
@@ -15,6 +17,36 @@ pub struct SearchEntriesParams {
     pub keyword: Option<String>,
     pub page: Option<u32>,
     pub per_page: Option<u32>,
+}
+impl Default for SearchEntriesParams {
+    fn default() -> Self {
+        Self {
+            keyword: None,
+            page: Some(1),
+            per_page: Some(10),
+        }
+    }
+}
+
+impl fmt::Display for SearchEntriesParams {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Ideally, we want an empty string if all fields are None
+        if self.keyword.is_none() && self.page.is_none() && self.per_page.is_none() {
+            return write!(f, "");
+        }
+
+        let keyword = self.keyword.as_deref().unwrap_or("");
+        let page = self.page.unwrap_or(1);
+        let per_page = self.per_page.unwrap_or(10);
+
+        write!(
+            f,
+            "page={}&per_page={}&keyword={}",
+            page,
+            per_page,
+            encode(keyword)
+        )
+    }
 }
 
 #[derive(Clone, Deserialize, Serialize)]

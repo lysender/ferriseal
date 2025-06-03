@@ -7,21 +7,17 @@
             <ul>
                 <li><a href="/">Home</a></li>
                 <li class="is-active">
-                    <a href="/buckets/{{ bucket.id }}" aria-current="page">{{ bucket.name }}</a>
+                    <a href="/vaults/{{ vault.id }}" aria-current="page">{{ vault.name }}</a>
                 </li>
             </ul>
         </nav>
 
-        <h1 class="title">{{ bucket.name }}</h1>
+        <h1 class="title">{{ vault.name }}</h1>
 
         <div class="albums-container">
             <nav class="albums panel is-dark">
                 <p class="panel-heading">
-                    {% if bucket.images_only %}
-                    Albums
-                    {% else %}
-                    Directories
-                    {% endif %}
+                    Entries
                 </p>
                 <div class="panel-block">
                     <p class="control has-icons-left">
@@ -30,7 +26,7 @@
                             type="search"
                             placeholder="Search"
                             name="keyword"
-                            hx-get="/buckets/{{ bucket.id }}/search_dirs"
+                            hx-get="/vaults/{{ vault.id }}/search_dirs"
                             hx-trigger="input changed delay:500ms, search"
                             hx-target=".album-items"
                         />
@@ -42,7 +38,7 @@
 
                 <div
                     class="album-items"
-                    hx-get="/buckets/{{ bucket.id }}/search_dirs?{{ query_params }}"
+                    hx-get="/vaults/{{ vault.id }}/search_dirs?{{ query_params }}"
                     hx-trigger="load"
                 >
                     <span class="panel-block is-skeleton">&nbsp;</span>

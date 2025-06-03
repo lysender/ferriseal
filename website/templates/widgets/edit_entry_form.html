@@ -1,19 +1,15 @@
 <form
     method="post"
-    action="/buckets/{{ bucket.id }}/dirs/{{ dir.id }}/edit"
-    hx-post="/buckets/{{ bucket.id }}/dirs/{{ dir.id }}/edit"
-    hx-target="#edit-dir-container"
+    action="/vaults/{{ vault.id }}/entries/{{ entry.id }}/edit"
+    hx-post="/vaults/{{ vault.id }}/entries/{{ entry.id }}/edit"
+    hx-target="#edit-entry-container"
 >
     <div class="columns">
         <div class="column is-half">
             <div class="card">
                 <div class="card-content">
                     <h1 class="title is-4 has-text-weight-bold">
-                        {% if bucket.images_only %}
-                        Album
-                        {% else %}
-                        Directory
-                        {% endif %}
+                        Entry
                     </h1>
 
                     {% match error_message %}
@@ -47,8 +43,8 @@
                         <div class="control">
                             <button
                                 class="button is-link is-light"
-                                hx-get="/buckets/{{ bucket.id }}/dirs/{{ dir.id }}/edit_controls"
-                                hx-target="#edit-dir-container"
+                                hx-get="/vaults/{{ vault.id }}/entries/{{ entry.id }}/edit_controls"
+                                hx-target="#edit-entry-container"
                             >
                                 Cancel
                             </button>

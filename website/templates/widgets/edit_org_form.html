@@ -2,9 +2,9 @@
     <div class="column is-half">
         <form
             method="post"
-            action="/clients/{{ client.id }}/edit"
-            hx-post="/clients/{{ client.id }}/edit"
-            hx-target="#edit-client-container"
+            action="/orgs/{{ org.id }}/edit"
+            hx-post="/orgs/{{ org.id }}/edit"
+            hx-target="#edit-org-container"
         >
             <div class="card">
                 <div class="card-content">
@@ -24,7 +24,7 @@
                             <input
                                 class="input"
                                 type="text"
-                                id="create-client-name"
+                                id="create-org-name"
                                 name="name"
                                 value="{{ payload.name }}"
                                 placeholder="Client Name"
@@ -32,20 +32,6 @@
                                 minlength="1"
                                 maxlength="60"
                             >
-                        </div>
-                    </div>
-
-                    <div class="field">
-                        <label class="label">Status</label>
-                        <div class="control">
-                            <label class="checkbox">
-                                {%if let Some(active) = payload.active %}
-                                <input name="active" type="checkbox" value="1" checked />
-                                {% else %}
-                                <input name="active" type="checkbox" value="1" />
-                                {% endif %}
-                                &nbsp;Active
-                            </label>
                         </div>
                     </div>
 
@@ -57,8 +43,8 @@
                         <div class="control">
                             <button
                                 class="button is-link is-light"
-                                hx-get="/clients/{{ client.id }}/edit_controls"
-                                hx-target="#edit-client-container"
+                                hx-get="/orgs/{{ org.id }}/edit_controls"
+                                hx-target="#edit-org-container"
                             >
                                 Cancel
                             </button>

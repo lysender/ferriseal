@@ -39,64 +39,120 @@
             <div class="field">
                 <label class="label">Username</label>
                 <div class="control">
-                    <input
-                        class="input"
-                        type="text"
-                        name="cipher_username"
-                        value="{{ payload.cipher_username }}"
-                        placeholder="Cipher Username"
-                        required
-                        minlength="1"
-                        maxlength="1000"
-                    >
+                    {% match payload.cipher_username %}
+                        {% when Some with (cipher_username) %}
+                            <input
+                                class="input"
+                                type="text"
+                                name="cipher_username"
+                                value="{{ cipher_username }}"
+                                placeholder="Cipher Username"
+                                required
+                                minlength="1"
+                                maxlength="1000"
+                            />
+                        {% when None %}
+                            <input
+                                class="input"
+                                type="text"
+                                name="cipher_username"
+                                value=""
+                                placeholder="Cipher Username"
+                                required
+                                minlength="1"
+                                maxlength="1000"
+                            />
+                    {% endmatch %}
                 </div>
             </div>
 
             <div class="field">
                 <label class="label">Password</label>
                 <div class="control">
-                    <input
-                        class="input"
-                        type="text"
-                        name="cipher_password"
-                        value="{{ payload.cipher_password }}"
-                        placeholder="Cipher Password"
-                        required
-                        minlength="1"
-                        maxlength="1000"
-                    >
+                    {% match payload.cipher_password %}
+                        {% when Some with (cipher_password) %}
+                            <input
+                                class="input"
+                                type="text"
+                                name="cipher_password"
+                                value="{{ cipher_password }}"
+                                placeholder="Cipher Password"
+                                required
+                                minlength="1"
+                                maxlength="1000"
+                            />
+                        {% when None %}
+                            <input
+                                class="input"
+                                type="text"
+                                name="cipher_password"
+                                value=""
+                                placeholder="Cipher Password"
+                                required
+                                minlength="1"
+                                maxlength="1000"
+                            />
+                    {% endmatch %}
                 </div>
             </div>
 
             <div class="field">
                 <label class="label">Notes</label>
                 <div class="control">
-                    <input
-                        class="input"
-                        type="text"
-                        name="cipher_notes"
-                        value="{{ payload.cipher_notes }}"
-                        placeholder="Cipher Notes"
-                        required
-                        minlength="1"
-                        maxlength="5000"
-                    >
+                    {% match payload.cipher_notes %}
+                        {% when Some with (cipher_notes) %}
+                            <input
+                                class="input"
+                                type="text"
+                                name="cipher_notes"
+                                value="{{ cipher_notes }}"
+                                placeholder="Cipher Notes"
+                                required
+                                minlength="1"
+                                maxlength="5000"
+                            />
+                        {% when None %}
+                            <input
+                                class="input"
+                                type="text"
+                                name="cipher_notes"
+                                value=""
+                                placeholder="Cipher Notes"
+                                required
+                                minlength="1"
+                                maxlength="5000"
+                            />
+                    {% endmatch %}
                 </div>
             </div>
 
             <div class="field">
                 <label class="label">Extra Notes</label>
                 <div class="control">
-                    <input
-                        class="input"
-                        type="text"
-                        name="cipher_extra_notes"
-                        value="{{ payload.cipher_extra_notes }}"
-                        placeholder="Cipher Extra Notes"
-                        required
-                        minlength="1"
-                        maxlength="5000"
-                    >
+                    {% match payload.cipher_extra_notes %}
+                        {% when Some with (cipher_extra_notes) %}
+                            <input
+                                class="input"
+                                type="text"
+                                name="cipher_extra_notes"
+                                value="{{ cipher_extra_notes }}"
+                                placeholder="Cipher Extra Notes"
+                                required
+                                minlength="1"
+                                maxlength="5000"
+                            />
+                        {% when None %}
+                            <input
+                                class="input"
+                                type="text"
+                                name="cipher_extra_notes"
+                                value=""
+                                placeholder="Cipher Extra Notes"
+                                required
+                                minlength="1"
+                                maxlength="5000"
+                            />
+                    {% endmatch %}
                 </div>
             </div>
 

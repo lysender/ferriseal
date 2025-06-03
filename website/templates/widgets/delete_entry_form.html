@@ -1,8 +1,8 @@
 <form
     method="post"
-    action="/buckets/{{ bucket.id }}/dirs/{{ dir.id }}/delete"
-    hx-post="/buckets/{{ bucket.id }}/dirs/{{ dir.id }}/delete"
-    hx-target="#edit-dir-container"
+    action="/vaults/{{ vault.id }}/entries/{{ entry.id }}/delete"
+    hx-post="/vaults/{{ vault.id }}/entries/{{ entry.id }}/delete"
+    hx-target="#edit-entry-container"
 >
     <div class="columns">
         <div class="column is-half">
@@ -12,7 +12,7 @@
                 <div class="mb-5">
                     <article class="message is-danger">
                         <div class="message-header">
-                            <p>Unable to delete dir</p>
+                            <p>Unable to delete entry</p>
                         </div>
                         <div class="message-body">
                             {{ msg }}
@@ -27,7 +27,7 @@
                     <p>Warning</p>
                 </div>
                 <div class="message-body">
-                    <p>Are you sure you want to delete the dir <strong>{{ dir.label }}</strong>?</p>
+                    <p>Are you sure you want to delete the entry <strong>{{ entry.label }}</strong>?</p>
 
                     <div class="mt-5 field is-grouped">
                         <div class="control">
@@ -37,8 +37,8 @@
                         <div class="control">
                             <button
                                 class="button is-link is-light"
-                                hx-get="/buckets/{{ bucket.id }}/dirs/{{ dir.id }}/edit_controls"
-                                hx-target="#edit-dir-container"
+                                hx-get="/vaults/{{ vault.id }}/entries/{{ entry.id }}/edit_controls"
+                                hx-target="#edit-entry-container"
                             >
                                 Cancel
                             </button>

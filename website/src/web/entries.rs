@@ -8,7 +8,7 @@ use urlencoding::encode;
 use crate::models::PaginationLinks;
 use crate::models::tokens::TokenFormData;
 use crate::services::entries::{
-    EntryFormData, SearchEntriesParams, create_entry, delete_entry, list_entries,
+    EntryFormData, SearchEntriesParams, create_entry, delete_entry, list_entries, update_entry,
 };
 use crate::{
     Error, Result,
@@ -202,7 +202,7 @@ pub async fn post_new_entry_handler(
 
 #[derive(Template)]
 #[template(path = "pages/entry.html")]
-struct DirTemplate {
+struct EntryTemplate {
     t: TemplateData,
     vault: VaultDto,
     entry: EntryDto,
@@ -211,30 +211,28 @@ struct DirTemplate {
     can_delete: bool,
 }
 
-pub async fn dir_page_handler(
+pub async fn entry_page_handler(
     Extension(ctx): Extension<Ctx>,
     Extension(pref): Extension<Pref>,
     Extension(vault): Extension<VaultDto>,
-    Extension(dir): Extension<Dir>,
+    Extension(entry): Extension<EntryDto>,
     State(state): State<AppState>,
 ) -> Result<Response<Body>> {
     let config = state.config.clone();
     let actor = ctx.actor().expect("actor is required");
     let mut t = TemplateData::new(&state, Some(actor.clone()), &pref);
 
-    t.title = format!("Photos - {}", &dir.label);
+    t.title = format!("Entry - {}", &entry.label);
     t.styles = vec![config.assets.gallery_css.clone()];
     t.scripts = vec![config.assets.gallery_js.clone()];
 
-    let tpl = DirTemplate {
+    let tpl = EntryTemplate {
         t,
         vault,
-        dir,
+        entry,
         updated: false,
-        can_edit: enforce_policy(actor, Resource::Album, Action::Update).is_ok(),
-        can_delete: enforce_policy(actor, Resource::Album, Action::Delete).is_ok(),
-        can_add_files: enforce_policy(actor, Resource::Photo, Action::Create).is_ok(),
-        can_delete_files: enforce_policy(actor, Resource::Photo, Action::Delete).is_ok(),
+        can_edit: enforce_policy(actor, Resource::Entry, Action::Update).is_ok(),
+        can_delete: enforce_policy(actor, Resource::Entry, Action::Delete).is_ok(),
     };
 
     Ok(Response::builder()
@@ -244,34 +242,30 @@ pub async fn dir_page_handler(
 }
 
 #[derive(Template)]
-#[template(path = "widgets/edit_dir_controls.html")]
-struct EditDirControlsTemplate {
+#[template(path = "widgets/edit_entry_controls.html")]
+struct EditEntryControlsTemplate {
     vault: VaultDto,
-    dir: Dir,
+    entry: EntryDto,
     updated: bool,
     can_edit: bool,
     can_delete: bool,
-    can_add_files: bool,
-    can_delete_files: bool,
 }
 
-/// Simply re-renders the edit and delete dir controls
-pub async fn edit_dir_controls_handler(
+/// Simply re-renders the edit and delete entry controls
+pub async fn edit_entry_controls_handler(
     Extension(ctx): Extension<Ctx>,
     Extension(vault): Extension<VaultDto>,
-    Extension(dir): Extension<Dir>,
+    Extension(entry): Extension<EntryDto>,
 ) -> Result<Response<Body>> {
     let actor = ctx.actor().expect("actor is required");
-    let _ = enforce_policy(actor, Resource::Album, Action::Update)?;
+    let _ = enforce_policy(actor, Resource::Entry, Action::Update)?;
 
-    let tpl = EditDirControlsTemplate {
+    let tpl = EditEntryControlsTemplate {
         vault,
-        dir,
+        entry,
         updated: false,
-        can_edit: enforce_policy(actor, Resource::Album, Action::Update).is_ok(),
-        can_delete: enforce_policy(actor, Resource::Album, Action::Delete).is_ok(),
-        can_add_files: enforce_policy(actor, Resource::Photo, Action::Create).is_ok(),
-        can_delete_files: enforce_policy(actor, Resource::Photo, Action::Delete).is_ok(),
+        can_edit: enforce_policy(actor, Resource::Entry, Action::Update).is_ok(),
+        can_delete: enforce_policy(actor, Resource::Entry, Action::Delete).is_ok(),
     };
 
     Ok(Response::builder()
@@ -281,33 +275,40 @@ pub async fn edit_dir_controls_handler(
 }
 
 #[derive(Template)]
-#[template(path = "widgets/edit_dir_form.html")]
-struct EditDirFormTemplate {
-    payload: UpdateDirFormData,
+#[template(path = "widgets/edit_entry_form.html")]
+struct EditEntryFormTemplate {
+    payload: EntryFormData,
     vault: VaultDto,
-    dir: Dir,
+    entry: EntryDto,
     error_message: Option<String>,
 }
 
 /// Renders the edit album form
-pub async fn edit_dir_handler(
+pub async fn edit_entry_handler(
     Extension(ctx): Extension<Ctx>,
     Extension(vault): Extension<VaultDto>,
-    Extension(dir): Extension<Dir>,
+    Extension(entry): Extension<EntryDto>,
     State(state): State<AppState>,
 ) -> Result<Response<Body>> {
     let config = state.config.clone();
     let actor = ctx.actor().expect("actor is required");
 
-    let _ = enforce_policy(actor, Resource::Album, Action::Update)?;
+    let _ = enforce_policy(actor, Resource::Entry, Action::Update)?;
 
-    let token = create_csrf_token(&dir.id, &config.jwt_secret)?;
+    let token = create_csrf_token(&entry.id, &config.jwt_secret)?;
 
-    let label = dir.label.clone();
-    let tpl = EditDirFormTemplate {
+    let label = entry.label.clone();
+    let tpl = EditEntryFormTemplate {
         vault,
-        dir,
-        payload: UpdateDirFormData { label, token },
+        entry,
+        payload: EntryFormData {
+            label: entry.label.clone(),
+            cipher_username: entry.cipher_username.clone(),
+            cipher_password: entry.cipher_password.clone(),
+            cipher_notes: entry.cipher_notes.clone(),
+            cipher_extra_notes: entry.cipher_extra_notes.clone(),
+            token,
+        },
         error_message: None,
     };
 
@@ -317,29 +318,33 @@ pub async fn edit_dir_handler(
         .context(ResponseBuilderSnafu)?)
 }
 
-/// Handles the edit album submission
-pub async fn post_edit_dir_handler(
+/// Handles the edit entry submission
+pub async fn post_edit_entry_handler(
     Extension(ctx): Extension<Ctx>,
     Extension(vault): Extension<VaultDto>,
-    Extension(dir): Extension<Dir>,
+    Extension(entry): Extension<EntryDto>,
     State(state): State<AppState>,
-    payload: Form<UpdateDirFormData>,
+    payload: Form<EntryFormData>,
 ) -> Result<Response<Body>> {
     let config = state.config.clone();
-    let cid = vault.org_id.clone();
-    let bid = vault.id.clone();
-    let dir_id = dir.id.clone();
+    let oid = vault.org_id.clone();
+    let vid = vault.id.clone();
+    let entry_id = entry.id.clone();
     let actor = ctx.actor().expect("actor is required");
 
-    let _ = enforce_policy(actor, Resource::Album, Action::Update)?;
+    let _ = enforce_policy(actor, Resource::Entry, Action::Update)?;
 
-    let token = create_csrf_token(&dir_id, &config.jwt_secret)?;
+    let token = create_csrf_token(&entry_id, &config.jwt_secret)?;
 
-    let mut tpl = EditDirFormTemplate {
+    let mut tpl = EditEntryFormTemplate {
         vault: vault.clone(),
-        dir: dir.clone(),
-        payload: UpdateDirFormData {
+        entry: entry.clone(),
+        payload: EntryFormData {
             label: "".to_string(),
+            cipher_username: None,
+            cipher_password: None,
+            cipher_notes: None,
+            cipher_extra_notes: None,
             token,
         },
         error_message: None,
@@ -348,18 +353,16 @@ pub async fn post_edit_dir_handler(
     tpl.payload.label = payload.label.clone();
 
     let token = ctx.token().expect("token is required");
-    let result = update_dir(&config, token, &cid, &bid, &dir_id, &payload).await;
+    let result = update_entry(&config, token, &oid, &vid, &entry_id, &payload).await;
     match result {
-        Ok(updated_dir) => {
+        Ok(updated_entry) => {
             // Render the controls again with an out-of-bound swap for title
-            let tpl = EditDirControlsTemplate {
+            let tpl = EditEntryControlsTemplate {
                 vault,
-                dir: updated_dir,
+                entry: updated_entry,
                 updated: true,
-                can_edit: enforce_policy(actor, Resource::Album, Action::Update).is_ok(),
-                can_delete: enforce_policy(actor, Resource::Album, Action::Delete).is_ok(),
-                can_add_files: enforce_policy(actor, Resource::Photo, Action::Create).is_ok(),
-                can_delete_files: enforce_policy(actor, Resource::Photo, Action::Delete).is_ok(),
+                can_edit: enforce_policy(actor, Resource::Entry, Action::Update).is_ok(),
+                can_delete: enforce_policy(actor, Resource::Entry, Action::Delete).is_ok(),
             };
             Ok(Response::builder()
                 .status(200)
@@ -392,29 +395,29 @@ pub async fn post_edit_dir_handler(
 }
 
 #[derive(Template)]
-#[template(path = "widgets/delete_dir_form.html")]
-struct DeleteDirTemplate {
+#[template(path = "widgets/delete_entry_form.html")]
+struct DeleteEntryTemplate {
     vault: VaultDto,
-    dir: Dir,
+    entry: EntryDto,
     payload: TokenFormData,
     error_message: Option<String>,
 }
 
-pub async fn get_delete_dir_handler(
+pub async fn get_delete_entry_handler(
     Extension(ctx): Extension<Ctx>,
     Extension(vault): Extension<VaultDto>,
-    Extension(dir): Extension<Dir>,
+    Extension(entry): Extension<EntryDto>,
     State(state): State<AppState>,
 ) -> Result<Response<Body>> {
     let config = state.config.clone();
     let actor = ctx.actor().expect("actor is required");
 
-    let _ = enforce_policy(actor, Resource::Album, Action::Delete)?;
-    let token = create_csrf_token(&dir.id, &config.jwt_secret)?;
+    let _ = enforce_policy(actor, Resource::Entry, Action::Delete)?;
+    let token = create_csrf_token(&entry.id, &config.jwt_secret)?;
 
-    let tpl = DeleteDirTemplate {
+    let tpl = DeleteEntryTemplate {
         vault,
-        dir,
+        entry,
         payload: TokenFormData { token },
         error_message: None,
     };
@@ -425,41 +428,41 @@ pub async fn get_delete_dir_handler(
         .context(ResponseBuilderSnafu)?)
 }
 
-/// Deletes album then redirect or show error
-pub async fn post_delete_dir_handler(
+/// Deletes entry then redirect or show error
+pub async fn post_delete_entry_handler(
     Extension(ctx): Extension<Ctx>,
     Extension(vault): Extension<VaultDto>,
-    Extension(dir): Extension<Dir>,
+    Extension(entry): Extension<EntryDto>,
     State(state): State<AppState>,
     payload: Form<TokenFormData>,
 ) -> Result<Response<Body>> {
     let config = state.config.clone();
     let actor = ctx.actor().expect("actor is required");
 
-    let _ = enforce_policy(actor, Resource::Album, Action::Delete)?;
+    let _ = enforce_policy(actor, Resource::Entry, Action::Delete)?;
 
-    let token = create_csrf_token(&dir.id, &config.jwt_secret)?;
+    let token = create_csrf_token(&entry.id, &config.jwt_secret)?;
 
     let auth_token = ctx.token().expect("token is required");
 
-    let result = delete_dir(
+    let result = delete_entry(
         &config,
         auth_token,
         &vault.org_id,
         &vault.id,
-        &dir.id,
+        &entry.id,
         &payload.token,
     )
     .await;
 
     match result {
         Ok(_) => {
-            let bid = vault.id.clone();
+            let vid = vault.id.clone();
 
             // Render same form but trigger a redirect to home
-            let tpl = DeleteDirTemplate {
+            let tpl = DeleteEntryTemplate {
                 vault,
-                dir,
+                entry,
                 payload: TokenFormData {
                     token: "".to_string(),
                 },
@@ -467,7 +470,7 @@ pub async fn post_delete_dir_handler(
             };
             Ok(Response::builder()
                 .status(200)
-                .header("HX-Redirect", format!("/vaults/{}", &bid))
+                .header("HX-Redirect", format!("/vaults/{}", &vid))
                 .body(Body::from(tpl.render().context(TemplateSnafu)?))
                 .context(ResponseBuilderSnafu)?)
         }
@@ -476,9 +479,9 @@ pub async fn post_delete_dir_handler(
             let error_message = Some(error_info.message);
 
             // Just render the form on first load or on error
-            let tpl = DeleteDirTemplate {
+            let tpl = DeleteEntryTemplate {
                 vault,
-                dir,
+                entry,
                 payload: TokenFormData { token },
                 error_message,
             };

@@ -4,7 +4,7 @@ use axum::{Extension, body::Body, extract::State, response::Response};
 use dto::vault::VaultDto;
 use snafu::ResultExt;
 
-use crate::models::ListDirsParams;
+use crate::services::entries::SearchEntriesParams;
 use crate::{
     Result,
     ctx::Ctx,
@@ -26,7 +26,7 @@ pub async fn my_vault_page_handler(
     Extension(pref): Extension<Pref>,
     Extension(vault): Extension<VaultDto>,
     State(state): State<AppState>,
-    Query(query): Query<ListDirsParams>,
+    Query(query): Query<SearchEntriesParams>,
 ) -> Result<Response<Body>> {
     let actor = ctx.actor().expect("actor is required");
     let mut t = TemplateData::new(&state, Some(actor.clone()), &pref);
