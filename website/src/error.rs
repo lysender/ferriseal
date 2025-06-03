@@ -63,21 +63,6 @@ pub enum Error {
     #[snafu(display("{}", msg))]
     Validation { msg: String },
 
-    #[snafu(display("Maximum number of clients reached: 10"))]
-    MaxClientsReached,
-
-    #[snafu(display("Maximum number of users reached: 100"))]
-    MaxUsersReached,
-
-    #[snafu(display("Maximum number of buckets reached: 50"))]
-    MaxBucketsReached,
-
-    #[snafu(display("Maximum number of directories reached: 1000"))]
-    MaxDirsReached,
-
-    #[snafu(display("Maximum number of files reached: 1000"))]
-    MaxFilesReached,
-
     #[snafu(display("{}", msg))]
     BadRequest { msg: String },
 
@@ -172,17 +157,8 @@ pub enum Error {
     #[snafu(display("Entry not found"))]
     EntryNotFound,
 
-    #[snafu(display("Album not found"))]
-    AlbumNotFound,
-
-    #[snafu(display("Bucket not found"))]
-    BucketNotFound,
-
     #[snafu(display("Vault not found"))]
     VaultNotFound,
-
-    #[snafu(display("Client not found"))]
-    ClientNotFound,
 
     #[snafu(display("Org not found"))]
     OrgNotFound,
@@ -217,11 +193,6 @@ impl From<&Error> for StatusCode {
     fn from(err: &Error) -> Self {
         match err {
             Error::Validation { .. } => StatusCode::BAD_REQUEST,
-            Error::MaxClientsReached => StatusCode::BAD_REQUEST,
-            Error::MaxUsersReached => StatusCode::BAD_REQUEST,
-            Error::MaxBucketsReached => StatusCode::BAD_REQUEST,
-            Error::MaxDirsReached => StatusCode::BAD_REQUEST,
-            Error::MaxFilesReached => StatusCode::BAD_REQUEST,
             Error::BadRequest { .. } => StatusCode::BAD_REQUEST,
             Error::Forbidden { .. } => StatusCode::FORBIDDEN,
             Error::JsonRejection { .. } => StatusCode::BAD_REQUEST,
@@ -242,9 +213,6 @@ impl From<&Error> for StatusCode {
             Error::LoginFailed { .. } => StatusCode::UNAUTHORIZED,
             Error::LoginRequired => StatusCode::UNAUTHORIZED,
             Error::FileNotFound => StatusCode::NOT_FOUND,
-            Error::AlbumNotFound => StatusCode::NOT_FOUND,
-            Error::BucketNotFound => StatusCode::NOT_FOUND,
-            Error::ClientNotFound => StatusCode::NOT_FOUND,
             Error::CsrfToken => StatusCode::BAD_REQUEST,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         }

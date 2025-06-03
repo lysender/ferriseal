@@ -7,8 +7,10 @@
                 </span>
                 <span>Back</span>
             </a>
+            {% if !org.admin %}
             <a class="button is-info" href="/orgs/{{ org.id }}/users">Manage Users</a>
             <a class="button is-warning" href="/orgs/{{ org.id }}/vaults">Manage Vaults</a>
+            {% endif %}
         </div>
     </div>
 
@@ -46,7 +48,7 @@
                 </a>
                 {% endif %}
 
-                {% if can_delete %}
+                {% if can_delete && !org.admin %}
                 <hr class="dropdown-divider" />
                 <a
                     class="dropdown-item has-text-danger"
