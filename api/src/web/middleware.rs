@@ -17,7 +17,7 @@ use crate::{
     },
     state::AppState,
 };
-use dto::{actor::Actor, entry::EntryDto, role::Permission, user::UserDto};
+use dto::{actor::Actor, entry::EntryDto, org::OrgDto, role::Permission, user::UserDto};
 use vault::utils::valid_id;
 
 use super::params::{EntryParams, OrgParams, UserParams, VaultParams};
@@ -103,6 +103,22 @@ pub async fn org_middleware(
     request.extensions_mut().insert(org);
     let response = next.run(request).await;
     Ok(response)
+}
+
+/// Org admins should not allow managing users and vaults
+pub async fn prevent_admin_org_middleware(
+    Extension(org): Extension<OrgDto>,
+    request: Request,
+    next: Next,
+) -> Result<Response<Body>> {
+    ensure!(
+        org.admin,
+        ForbiddenSnafu {
+            msg: "Admin orgs does not allow managing users and vaults"
+        }
+    );
+
+    Ok(next.run(request).await)
 }
 
 pub async fn vault_middleware(

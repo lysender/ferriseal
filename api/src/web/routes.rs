@@ -15,8 +15,8 @@ use super::{
         update_user_status_handler, user_authz_handler, user_permissions_handler,
     },
     middleware::{
-        auth_middleware, entry_middleware, org_middleware, require_auth_middleware,
-        user_middleware, vault_middleware,
+        auth_middleware, entry_middleware, org_middleware, prevent_admin_org_middleware,
+        require_auth_middleware, user_middleware, vault_middleware,
     },
 };
 use crate::state::AppState;
@@ -90,6 +90,10 @@ fn org_users_routes(state: AppState) -> Router<AppState> {
     Router::new()
         .route("/", get(list_users_handler).post(create_user_handler))
         .nest("/{user_id}", inner_user_routes(state.clone()))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            prevent_admin_org_middleware,
+        ))
         .with_state(state)
 }
 
@@ -115,6 +119,10 @@ fn org_vaults_routes(state: AppState) -> Router<AppState> {
     Router::new()
         .route("/", get(list_vaults_handler).post(create_vault_handler))
         .nest("/{vault_id}", inner_vault_routes(state.clone()))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            prevent_admin_org_middleware,
+        ))
         .with_state(state)
 }
 
