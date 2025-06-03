@@ -29,9 +29,6 @@ pub enum Error {
     #[snafu(display("{}", msg))]
     Validation { msg: String },
 
-    #[snafu(display("Maximum number of users reached: 100"))]
-    MaxUsersReached,
-
     #[snafu(display("{}", source))]
     Password {
         source: password::Error,

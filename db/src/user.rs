@@ -10,8 +10,7 @@ use validator::Validate;
 
 use crate::Result;
 use crate::error::{
-    DbInteractSnafu, DbPoolSnafu, DbQuerySnafu, InvalidRolesSnafu, MaxUsersReachedSnafu,
-    PasswordSnafu, ValidationSnafu,
+    DbInteractSnafu, DbPoolSnafu, DbQuerySnafu, InvalidRolesSnafu, PasswordSnafu, ValidationSnafu,
 };
 use crate::schema::users::{self, dsl};
 use dto::role::{Role, to_roles};
@@ -160,7 +159,12 @@ impl UserRepoable for UserRepo {
 
         let db = self.db_pool.get().await.context(DbPoolSnafu)?;
         let count = self.count_by_org(org_id).await?;
-        ensure!(count < MAX_USERS_PER_ORG as i64, MaxUsersReachedSnafu);
+        ensure!(
+            count < MAX_USERS_PER_ORG as i64,
+            ValidationSnafu {
+                msg: format!("Orgs can only have up to {} users", MAX_USERS_PER_ORG)
+            }
+        );
 
         // Username must be unique
         let existing = self.find_by_username(&data.username).await?;
