@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use axum::extract::rejection::JsonRejection;
 use axum::response::IntoResponse;
 use axum::{body::Body, http::StatusCode, response::Response};
-use deadpool_diesel::{InteractError, PoolError};
 use dto::role::{InvalidPermissionsError, InvalidRolesError};
 use serde::{Deserialize, Serialize};
 use snafu::{Backtrace, ErrorCompat, Snafu};
@@ -37,25 +36,6 @@ pub enum Error {
     #[snafu(display("{}", source))]
     Db {
         source: db::Error,
-        backtrace: Backtrace,
-    },
-
-    #[snafu(display("Error getting db connection: {}", source))]
-    DbPool {
-        source: PoolError,
-        backtrace: Backtrace,
-    },
-
-    #[snafu(display("Error using the db connection: {}", source))]
-    DbInteract {
-        source: InteractError,
-        backtrace: Backtrace,
-    },
-
-    #[snafu(display("Error querying {}: {}", table, source))]
-    DbQuery {
-        table: String,
-        source: diesel::result::Error,
         backtrace: Backtrace,
     },
 
@@ -223,6 +203,12 @@ impl From<&Error> for StatusCode {
             Error::UserNotFound => StatusCode::UNAUTHORIZED,
             Error::InvalidRoles { .. } => StatusCode::BAD_REQUEST,
             Error::InvalidPermissions { .. } => StatusCode::BAD_REQUEST,
+            #[allow(unused_variables)]
+            Error::Db { source, backtrace } => match source {
+                db::Error::Validation { .. } => StatusCode::BAD_REQUEST,
+                db::Error::InvalidRoles { .. } => StatusCode::BAD_REQUEST,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            },
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
