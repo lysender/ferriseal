@@ -123,12 +123,6 @@ pub enum Error {
         backtrace: Backtrace,
     },
 
-    #[snafu(display("{}", msg))]
-    HashPassword { msg: String },
-
-    #[snafu(display("{}", msg))]
-    VerifyPasswordHash { msg: String },
-
     #[snafu(display("Invalid username or password"))]
     InvalidPassword,
 
@@ -207,6 +201,11 @@ impl From<&Error> for StatusCode {
             Error::Db { source, backtrace } => match source {
                 db::Error::Validation { .. } => StatusCode::BAD_REQUEST,
                 db::Error::InvalidRoles { .. } => StatusCode::BAD_REQUEST,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            },
+            #[allow(unused_variables)]
+            Error::Password { source, backtrace } => match source {
+                password::Error::Incorrect => StatusCode::UNAUTHORIZED,
                 _ => StatusCode::INTERNAL_SERVER_ERROR,
             },
             _ => StatusCode::INTERNAL_SERVER_ERROR,
