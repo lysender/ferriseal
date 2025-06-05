@@ -4,10 +4,4 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-getrandom = { version = "0.2.16", features = ["js"] }
-uuid.workspace = true
-leptos.workspace = true
-cipher = { path = "../cipher" }
-dto = { path = "../dto" }
-vault = { path = "../vault" }
-password = { path = "../password" }
+leptos = { version = "0.8.2", features = ["csr"] }

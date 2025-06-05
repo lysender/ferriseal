@@ -3704,13 +3704,9 @@ dependencies = [
 name = "wasm"
 version = "0.1.0"
 dependencies = [
- "cipher 0.1.0",
- "dto",
  "getrandom 0.2.16",
  "leptos",
- "password",
  "uuid",
- "vault",
 ]
 
 [[package]]
