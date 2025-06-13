@@ -2,7 +2,8 @@ jwt_secret = "secret"
 upload_dir = "/path/to/upload/dir"
 
 [server]
-port = 42000 
+port = 42000
+cors = false
 
 [db]
 url = "sqlite://db.sqlite3"

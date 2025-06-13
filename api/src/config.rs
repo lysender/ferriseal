@@ -17,6 +17,7 @@ pub struct Config {
 #[derive(Debug, Clone, Deserialize)]
 pub struct ServerConfig {
     pub port: u16,
+    pub cors: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]

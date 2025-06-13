@@ -28,7 +28,10 @@ pub fn create_test_app_state() -> AppState {
     let config = Config {
         jwt_secret: "0196d1dbbfd87819b9183f14ac3ed485".to_string(),
         upload_dir: PathBuf::new(),
-        server: ServerConfig { port: 43700 },
+        server: ServerConfig {
+            port: 43700,
+            cors: false,
+        },
         db: DbConfig {
             url: "-url".to_string(),
         },

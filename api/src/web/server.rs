@@ -1,6 +1,8 @@
 use axum::{Router, body::Body, middleware, response::Response};
+use std::time::Duration;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
+use tower_http::cors::CorsLayer;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
 use tracing::{Level, error, info};
 
@@ -15,9 +17,11 @@ use axum_test::TestServer;
 
 pub async fn run_web_server(config: &Config) -> Result<()> {
     let port = config.server.port;
+    let allow_cors = config.server.cors;
+
     let state = create_app_state(config).await?;
 
-    let routes_all = Router::new()
+    let mut routes_all = Router::new()
         .merge(all_routes(state))
         .layer(middleware::map_response(response_mapper))
         .layer(
@@ -27,6 +31,11 @@ pub async fn run_web_server(config: &Config) -> Result<()> {
                     .on_response(DefaultOnResponse::new().level(Level::INFO)),
             ),
         );
+
+    if allow_cors {
+        let cors = CorsLayer::permissive().max_age(Duration::from_secs(60) * 10);
+        routes_all = routes_all.layer(cors);
+    }
 
     // Setup the server
     let ip = "127.0.0.1";
