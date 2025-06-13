@@ -1,6 +1,8 @@
 use leptos::prelude::*;
 use reactive_stores::Store;
 
+use crate::container::Container;
+
 #[component]
 pub fn App() -> impl IntoView {
     let (count, set_count) = signal(0);
@@ -9,6 +11,7 @@ pub fn App() -> impl IntoView {
     let values = vec![0, 1, 2];
 
     view! {
+        <Container />
         <button
             on:click=move |_| {
                 *set_count.write() += 1;
